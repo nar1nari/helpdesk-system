@@ -1,7 +1,10 @@
 const db = require("../../src/db");
 
 beforeEach(async () => {
-    await db.query("TRUNCATE TABLE users RESTART IDENTITY CASCADE");
+    await db.query(
+        `TRUNCATE TABLE users RESTART IDENTITY CASCADE;
+         TRUNCATE TABLE categories RESTART IDENTITY CASCADE;`,
+    );
 });
 
 afterAll(async () => {
