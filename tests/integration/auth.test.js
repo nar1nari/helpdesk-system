@@ -28,7 +28,7 @@ describe("Auth API", () => {
         test("password is hashed", async () => {
             await request(app).post("/auth/register").send(creds);
             const User = require("../../src/models/users");
-            const stored = User.find(creds.username);
+            const stored = await User.find(creds.username);
             expect(stored.password).not.toBe(creds.password);
             expect(stored.password).toMatch(/^\$2[aby]\$/);
         });
@@ -36,7 +36,7 @@ describe("Auth API", () => {
         test("new user gets applicant role by default", async () => {
             await request(app).post("/auth/register").send(creds);
             const User = require("../../src/models/users");
-            expect(User.find(creds.username).role).toBe("applicant");
+            expect((await User.find(creds.username)).role).toBe("applicant");
         });
     });
 

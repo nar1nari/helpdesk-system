@@ -1,21 +1,19 @@
+const User = require("../../src/models/users");
+
+const creds = { username: "alice", password: "secret123" };
+
 describe("User model", () => {
-    let User;
-
-    beforeEach(() => {
-        User = require("../../src/models/users");
-    });
-
-    test("new user gets applicant role by default", () => {
-        const user = new User();
+    test("new user gets applicant role by default", async () => {
+        const user = await User.create(creds.username, creds.password);
         expect(user.role).toBe("applicant");
     });
 
-    test("save() saves user, find() finds user", () => {
-        const user = new User("alice", "1234").save();
-        expect(User.find("alice")).toBe(user);
+    test("find() finds user", async () => {
+        const user = await User.create(creds.username, creds.password);
+        expect(await User.find(creds.username)).toMatchObject(user);
     });
 
-    test("find() returns undefined for unknown user", () => {
-        expect(User.find("unknown")).toBeUndefined();
+    test("find() returns undefined for unknown user", async () => {
+        expect(await User.find("unknown")).toBeUndefined();
     });
 });

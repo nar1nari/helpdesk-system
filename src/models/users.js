@@ -1,4 +1,4 @@
-const users = [];
+const db = require("../db");
 
 const Role = Object.freeze({
     APPLICANT: "applicant",
@@ -6,27 +6,26 @@ const Role = Object.freeze({
     ADMIN: "admin",
 });
 
-class User {
-    constructor(
-        username,
-        password,
-        role = Role.APPLICANT,
-        created_at = new Date(),
-    ) {
-        this.username = username;
-        this.password = password;
-        this.role = role;
-        this.created_at = created_at;
-    }
+const User = {
+    Role,
 
-    save() {
-        users.push(this);
-        return this;
-    }
+    async create(username, passwordHash, role = Role.APPLICANT) {
+        const { rows } = await db.query(
+            `INSERT INTO users (username, password, role)
+             VALUES ($1, $2, $3)
+             RETURNING id, username, role, created_at`,
+            [username, passwordHash, role],
+        );
+        return rows[0];
+    },
 
-    static find(username) {
-        return users.find((u) => u.username === username);
-    }
-}
+    async find(username) {
+        const { rows } = await db.query(
+            "SELECT * FROM users WHERE username = $1",
+            [username],
+        );
+        return rows[0];
+    },
+};
 
 module.exports = User;
