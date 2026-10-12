@@ -14,12 +14,6 @@ function canView(user, request) {
 }
 
 exports.create = async (req, res) => {
-    const user = await User.find(req.user.username);
-
-    if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const { category_id, title, description } = req.body;
 
     if (!category_id || !title || !description) {
@@ -29,24 +23,23 @@ exports.create = async (req, res) => {
     }
 
     res.json({
-        request: await Request.create(user.id, category_id, title, description),
+        request: await Request.create(
+            req.user.id,
+            category_id,
+            title,
+            description,
+        ),
     });
 };
 
 exports.get = async (req, res) => {
-    const user = await User.find(req.user.username);
-
-    if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const request = await Request.get(req.params.id);
 
     if (!request) {
         return res.status(404).json({ message: "Request not found" });
     }
 
-    if (!canView(user, request)) {
+    if (!canView(req.user, request)) {
         return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -54,12 +47,6 @@ exports.get = async (req, res) => {
 };
 
 exports.set_status = async (req, res) => {
-    const user = await User.find(req.user.username);
-
-    if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const request = await Request.get(req.params.id);
 
     if (!request) {
@@ -67,8 +54,9 @@ exports.set_status = async (req, res) => {
     }
 
     const allowed =
-        user.role === "admin" ||
-        (user.role === "operator" && request.assigned_operator_id === user.id);
+        req.user.role === "admin" ||
+        (req.user.role === "operator" &&
+            request.assigned_operator_id === req.user.id);
 
     if (!allowed) {
         return res.status(403).json({ message: "Forbidden" });
@@ -85,16 +73,10 @@ exports.set_status = async (req, res) => {
 
 exports.list = async (req, res, next) => {
     try {
-        const user = await User.find(req.user.username);
-
-        if (!user) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-
         const result = await Request.list({
             ...req.query,
-            currentUserId: user.id,
-            currentUserRole: user.role,
+            currentUserId: req.user.id,
+            currentUserRole: req.user.role,
         });
 
         res.json(result);
@@ -104,12 +86,6 @@ exports.list = async (req, res, next) => {
 };
 
 exports.assign_operator = async (req, res) => {
-    const user = await User.find(req.user.username);
-
-    if (!user) {
-        return res.status(401).json({ message: "Unauthorized" });
-    }
-
     const request = await Request.get(req.params.id);
 
     if (!request) {
@@ -125,10 +101,10 @@ exports.assign_operator = async (req, res) => {
     }
 
     const allowed =
-        user.role === "admin" ||
-        (user.role === "operator" &&
+        req.user.role === "admin" ||
+        (req.user.role === "operator" &&
             request.assigned_operator_id === null &&
-            operatorId === user.id);
+            operatorId === req.user.id);
 
     if (!allowed) {
         return res.status(403).json({ message: "Forbidden" });
