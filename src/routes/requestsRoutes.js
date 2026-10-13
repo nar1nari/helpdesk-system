@@ -10,6 +10,10 @@ const {
 const {
     create: create_attachment,
 } = require("../controllers/attachmentsController");
+const {
+    create: create_comment,
+    get: get_comments,
+} = require("../controllers/commentsController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
 const router = express.Router();
@@ -27,5 +31,8 @@ router.post(
     upload.single("file"),
     create_attachment,
 );
+
+router.post("/:id/comments", authMiddleware, create_comment);
+router.get("/:id/comments", authMiddleware, get_comments);
 
 module.exports = router;

@@ -30,3 +30,11 @@ CREATE TABLE IF NOT EXISTS request_attachments (
     original_name           VARCHAR(260) NOT NULL,
     uploaded_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS request_comments (
+    id                       SERIAL PRIMARY KEY,
+    request_id               INTEGER NOT NULL REFERENCES requests(id),
+    author_id                INTEGER NOT NULL REFERENCES users(id),
+    content                  TEXT NOT NULL,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+);
