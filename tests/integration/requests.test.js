@@ -1,39 +1,23 @@
 const request = require("supertest");
 const createApp = require("../helpers/createApp");
 const db = require("../../src/db");
-const User = require("../../src/models/users");
 const Category = require("../../src/models/categories");
 const Request = require("../../src/models/requests");
+const createAuthHelpers = require("../helpers/authHelpers");
 
 const password = "secret123";
 
 describe("Requests API", () => {
     let app;
     let category;
+    let signUp;
+    let auth;
 
     beforeEach(async () => {
         app = createApp();
+        ({ signUp, auth } = createAuthHelpers(app));
         category = await Category.add("category1");
     });
-
-    async function signUp(username, role = "applicant") {
-        await request(app).post("/auth/register").send({ username, password });
-
-        if (role !== "applicant") {
-            await db.query("UPDATE users SET role = $1 WHERE username = $2", [
-                role,
-                username,
-            ]);
-        }
-
-        const login = await request(app)
-            .post("/auth/login")
-            .send({ username, password });
-
-        return { token: login.body.token, user: await User.find(username) };
-    }
-
-    const auth = (token) => ({ Authorization: `Bearer ${token}` });
 
     async function createRequest(token, overrides = {}) {
         const res = await request(app)

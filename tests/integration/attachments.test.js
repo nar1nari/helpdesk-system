@@ -5,12 +5,11 @@ const fs = require("fs/promises");
 const crypto = require("crypto");
 const createApp = require("../helpers/createApp");
 const db = require("../../src/db");
-const User = require("../../src/models/users");
 const Category = require("../../src/models/categories");
 const Request = require("../../src/models/requests");
 const Attachment = require("../../src/models/attachments");
+const createAuthHelpers = require("../helpers/authHelpers");
 
-const password = "secret123";
 const FIELD = "file";
 const uploadDir = path.resolve("uploads/attachments");
 
@@ -19,6 +18,8 @@ const listUploads = () => fs.readdir(uploadDir).catch(() => []);
 describe("Attachments API", () => {
     let app;
     let category;
+    let signUp;
+    let auth;
     let sourceDir;
     let filesBefore;
 
@@ -41,27 +42,9 @@ describe("Attachments API", () => {
 
     beforeEach(async () => {
         app = createApp();
+        ({ signUp, auth } = createAuthHelpers(app));
         category = await Category.add("category1");
     });
-
-    async function signUp(username, role = "applicant") {
-        await request(app).post("/auth/register").send({ username, password });
-
-        if (role !== "applicant") {
-            await db.query("UPDATE users SET role = $1 WHERE username = $2", [
-                role,
-                username,
-            ]);
-        }
-
-        const login = await request(app)
-            .post("/auth/login")
-            .send({ username, password });
-
-        return { token: login.body.token, user: await User.find(username) };
-    }
-
-    const auth = (token) => ({ Authorization: `Bearer ${token}` });
 
     const createRequestFor = (user) =>
         Request.create(
