@@ -26,6 +26,15 @@ const User = {
         );
         return rows[0];
     },
+
+    async delete(username) {
+        const { rows } = await db.query(
+            `DELETE FROM users WHERE username = $1
+             RETURNING id, username, role, created_at`,
+            [username],
+        );
+        return rows[0];
+    },
 };
 
 module.exports = User;
