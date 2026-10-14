@@ -1,5 +1,5 @@
 const Request = require("../models/requests");
-const User = require("../models/users");
+const StatusHistory = require("../models/statusHistory");
 
 function canView(user, request) {
     if (user.role === "admin") return true;
@@ -66,8 +66,20 @@ exports.set_status = async (req, res) => {
         return res.status(400).json({ message: "Invalid status" });
     }
 
+    const old_status = request.status;
+    const new_status = (
+        await Request.set_status(req.params.id, req.body.status)
+    ).status;
+
+    await StatusHistory.create(
+        req.params.id,
+        req.user.id,
+        old_status,
+        new_status,
+    );
+
     res.json({
-        status: await Request.set_status(req.params.id, req.body.status),
+        status: new_status,
     });
 };
 

@@ -38,3 +38,12 @@ CREATE TABLE IF NOT EXISTS request_comments (
     content                  TEXT NOT NULL,
     created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS request_status_history (
+    id                       SERIAL PRIMARY KEY,
+    request_id               INTEGER NOT NULL REFERENCES requests(id),
+    changed_by               INTEGER NOT NULL REFERENCES users(id),
+    old_status               VARCHAR(20) NOT NULL,
+    new_status               VARCHAR(20) NOT NULL,
+    changed_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+)
