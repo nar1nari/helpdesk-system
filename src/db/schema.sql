@@ -1,8 +1,13 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
 CREATE TABLE IF NOT EXISTS users (
     id                      SERIAL PRIMARY KEY,
-    username                VARCHAR(50) UNIQUE NOT NULL,
+    username                CITEXT UNIQUE NOT NULL
+                            CHECK (username ~ '^[A-Za-z0-9_.-]{3,32}$'),
     password                TEXT NOT NULL,
-    role                    VARCHAR(20) NOT NULL DEFAULT 'applicant',
+    role                    VARCHAR(20) NOT NULL DEFAULT 'applicant'
+                            CHECK (role IN ('applicant', 'operator', 'admin')),
+    is_active               BOOLEAN NOT NULL DEFAULT true,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -13,37 +18,51 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS requests (
     id                      SERIAL PRIMARY KEY,
-    user_id                 INTEGER NOT NULL REFERENCES users(id),
-    category_id             INTEGER NOT NULL REFERENCES categories(id),
+    user_id                 INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    category_id             INTEGER NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
     title                   VARCHAR(255) NOT NULL,
-    description             TEXT,
-    status                  VARCHAR(20) NOT NULL DEFAULT 'new',
-    assigned_operator_id    INTEGER REFERENCES users(id),
+    description             TEXT NOT NULL CHECK (char_length(description) BETWEEN 1 AND 5000),
+    status                  VARCHAR(20) NOT NULL DEFAULT 'new'
+                            CHECK (status IN (
+    'new','in_progress','pending','resolved','closed','rejected')),
+    assigned_operator_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS request_attachments (
     id                      SERIAL PRIMARY KEY,
-    request_id              INTEGER NOT NULL REFERENCES requests(id),
+    request_id              INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
     file_path               TEXT NOT NULL,
-    original_name           VARCHAR(260) NOT NULL,
+    original_name           VARCHAR(255) NOT NULL,
+    mime_type               VARCHAR(100) NOT NULL,
+    size_bytes              INTEGER NOT NULL,
     uploaded_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS request_comments (
     id                       SERIAL PRIMARY KEY,
-    request_id               INTEGER NOT NULL REFERENCES requests(id),
-    author_id                INTEGER NOT NULL REFERENCES users(id),
-    content                  TEXT NOT NULL,
+    request_id               INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    author_id                INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    content                  TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 5000),
     created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS request_status_history (
     id                       SERIAL PRIMARY KEY,
-    request_id               INTEGER NOT NULL REFERENCES requests(id),
-    changed_by               INTEGER NOT NULL REFERENCES users(id),
+    request_id               INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    changed_by               INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     old_status               VARCHAR(20) NOT NULL,
     new_status               VARCHAR(20) NOT NULL,
     changed_at               TIMESTAMPTZ NOT NULL DEFAULT now()
-)
+);
+
+CREATE FUNCTION set_updated_at() RETURNS trigger AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER requests_set_updated_at
+    BEFORE UPDATE ON requests
+    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
