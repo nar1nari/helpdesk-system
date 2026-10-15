@@ -1,3 +1,4 @@
+const { notFound, forbidden, badRequest } = require("../errors");
 const Comment = require("../models/comments");
 const Request = require("../models/requests");
 
@@ -10,15 +11,15 @@ function canView(user, request) {
 exports.create = async (req, res) => {
     const request = await Request.get(req.params.id);
     if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        throw notFound("Request not found");
     }
 
     if (!canView(req.user, request)) {
-        return res.status(403).json({ message: "Forbidden" });
+        throw forbidden();
     }
 
     if (!req.body?.message) {
-        return res.status(400).json({ message: "No comment uploaded" });
+        throw badRequest("Message is required");
     }
 
     const comment = await Comment.create(
@@ -32,11 +33,11 @@ exports.create = async (req, res) => {
 exports.get = async (req, res) => {
     const request = await Request.get(req.params.id);
     if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        throw notFound("Request not found");
     }
 
     if (!canView(req.user, request)) {
-        return res.status(403).json({ message: "Forbidden" });
+        throw forbidden();
     }
 
     const comments = await Comment.findBy(req.params.id);

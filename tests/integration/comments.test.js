@@ -66,7 +66,7 @@ describe("Comments API", () => {
         test("404 for unknown request", async () => {
             const alice = await signUp("alice");
 
-            const res = await sendComment(alice.token, -1);
+            const res = await sendComment(alice.token, 42);
 
             expect(res.status).toBe(404);
         });
@@ -103,7 +103,7 @@ describe("Comments API", () => {
                 .set(auth(alice.token));
 
             expect(res.status).toBe(400);
-            expect(res.body.message).toBe("No comment uploaded");
+            expect(res.body.error.message).toBe("Message is required");
         });
 
         test("uploads a comment to own request", async () => {

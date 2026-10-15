@@ -108,7 +108,7 @@ describe("Attachments API", () => {
         test("404 for unknown request", async () => {
             const alice = await signUp("alice");
 
-            const res = await upload(alice.token, -1);
+            const res = await upload(alice.token, 42);
 
             expect(res.status).toBe(404);
             expect(await countAttachments()).toBe(0);
@@ -137,7 +137,7 @@ describe("Attachments API", () => {
                 .set(auth(alice.token));
 
             expect(res.status).toBe(400);
-            expect(res.body.message).toBe("No file uploaded");
+            expect(res.body.error.message).toBe("No file uploaded");
             expect(await countAttachments()).toBe(0);
         });
 
@@ -191,11 +191,11 @@ describe("Attachments API", () => {
             const alice = await signUp("alice");
 
             const res = await request(app)
-                .get("/attachments/-1")
+                .get("/attachments/42")
                 .set(auth(alice.token));
 
             expect(res.status).toBe(404);
-            expect(res.body.message).toBe("Attachment not found");
+            expect(res.body.error.message).toBe("Attachment not found");
         });
 
         test("downloads the file with its original name", async () => {

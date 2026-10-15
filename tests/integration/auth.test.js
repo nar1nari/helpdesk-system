@@ -22,7 +22,7 @@ describe("Auth API", () => {
             await request(app).post("/auth/register").send(creds);
             const res = await request(app).post("/auth/register").send(creds);
             expect(res.status).toBe(400);
-            expect(res.body.message).toBe("User already exists");
+            expect(res.body.error.message).toBe("Username already exists");
         });
 
         test("password is hashed", async () => {
@@ -58,7 +58,7 @@ describe("Auth API", () => {
                 .post("/auth/login")
                 .send({ ...creds, password: "wrong" });
             expect(res.status).toBe(401);
-            expect(res.body.message).toBe("Invalid credentials");
+            expect(res.body.error.message).toBe("Invalid credentials");
         });
 
         test("401 when user does not exist", async () => {
@@ -66,7 +66,7 @@ describe("Auth API", () => {
                 .post("/auth/login")
                 .send({ username: "ghost", password: "x" });
             expect(res.status).toBe(401);
-            expect(res.body.message).toBe("Invalid credentials");
+            expect(res.body.error.message).toBe("Invalid credentials");
         });
     });
 

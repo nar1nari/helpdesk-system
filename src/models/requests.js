@@ -1,5 +1,6 @@
 const db = require("../db");
 const Status = require("./status");
+const { badRequest } = require("../errors");
 
 const SORT_FIELDS = Object.freeze({
     id: "id",
@@ -8,8 +9,6 @@ const SORT_FIELDS = Object.freeze({
     created_at: "created_at",
     updated_at: "updated_at",
 });
-
-const invalid = (message) => Object.assign(new Error(message), { status: 400 });
 
 const Request = {
     Status,
@@ -34,7 +33,7 @@ const Request = {
 
     async set_status(request_id, status) {
         if (!Object.values(Request.Status).includes(status)) {
-            throw invalid(`Invalid status: ${status}`);
+            throw badRequest("Invalid status", status);
         }
         const { rows } = await db.query(
             "UPDATE requests SET status = $1 WHERE id = $2 RETURNING status",
@@ -69,23 +68,23 @@ const Request = {
         limit = Number(limit);
 
         if (!Number.isInteger(page) || page < 1) {
-            throw invalid("page must be a positive integer");
+            throw badRequest("page must be a positive integer");
         }
 
         if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-            throw invalid("limit must be an integer between 1 and 100");
+            throw badRequest("limit must be an integer between 1 and 100");
         }
 
         const sortColumn = SORT_FIELDS[sortBy];
 
         if (!sortColumn) {
-            throw invalid("Invalid sortBy field");
+            throw badRequest("Invalid sortBy field");
         }
 
         sortOrder = String(sortOrder).toUpperCase();
 
         if (!["ASC", "DESC"].includes(sortOrder)) {
-            throw invalid("sortOrder must be ASC or DESC");
+            throw badRequest("sortOrder must be ASC or DESC");
         }
 
         const conditions = [];
@@ -109,7 +108,7 @@ const Request = {
 
         if (status !== undefined && status !== "") {
             if (!Object.values(Status).includes(status)) {
-                throw invalid("Invalid status");
+                throw badRequest("Invalid status");
             }
 
             addFilter("status = ?", status);

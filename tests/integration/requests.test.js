@@ -100,7 +100,7 @@ describe("Requests API", () => {
         test("404 for unknown request", async () => {
             const { token } = await signUp("alice");
 
-            const res = await request(app).get("/requests/-1").set(auth(token));
+            const res = await request(app).get("/requests/42").set(auth(token));
 
             expect(res.status).toBe(404);
         });
@@ -323,7 +323,7 @@ describe("Requests API", () => {
             const admin = await signUp("admin", "admin");
 
             const res = await request(app)
-                .patch("/requests/-1/status")
+                .patch("/requests/42/status")
                 .set(auth(admin.token))
                 .send({ status: Request.Status.IN_PROGRESS });
 
@@ -340,7 +340,7 @@ describe("Requests API", () => {
                 .send({ status: Request.Status.IN_PROGRESS });
 
             expect(res.status).toBe(403);
-            expect(res.body.message).toBe("Forbidden");
+            expect(res.body.error.message).toBe("Forbidden");
             expect((await Request.get(created.id)).status).toBe(
                 Request.Status.NEW,
             );
@@ -422,7 +422,7 @@ describe("Requests API", () => {
                 .send({ status: "invalid" });
 
             expect(res.status).toBe(400);
-            expect(res.body.message).toBe("Invalid status");
+            expect(res.body.error.message).toBe("Invalid status");
         });
     });
 
@@ -438,7 +438,7 @@ describe("Requests API", () => {
             const admin = await signUp("admin", "admin");
 
             const res = await request(app)
-                .patch("/requests/-1/assign")
+                .patch("/requests/42/assign")
                 .set(auth(admin.token))
                 .send({ operator_id: admin.user.id });
 

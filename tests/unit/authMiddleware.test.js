@@ -21,8 +21,12 @@ describe("authMiddleware", () => {
 
         await authMiddleware({ headers: {} }, res, next);
 
-        expect(res.sendStatus).toHaveBeenCalledWith(401);
-        expect(next).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 401,
+            }),
+        );
+        expect(res.sendStatus).not.toHaveBeenCalled();
         expect(User.find).not.toHaveBeenCalled();
     });
 
@@ -32,8 +36,12 @@ describe("authMiddleware", () => {
 
         await authMiddleware(withToken("garbage"), res, next);
 
-        expect(res.sendStatus).toHaveBeenCalledWith(401);
-        expect(next).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 401,
+            }),
+        );
+        expect(res.sendStatus).not.toHaveBeenCalled();
         expect(User.find).not.toHaveBeenCalled();
     });
 
@@ -44,8 +52,12 @@ describe("authMiddleware", () => {
 
         await authMiddleware(withToken(token), res, next);
 
-        expect(res.sendStatus).toHaveBeenCalledWith(401);
-        expect(next).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 401,
+            }),
+        );
+        expect(res.sendStatus).not.toHaveBeenCalled();
         expect(User.find).not.toHaveBeenCalled();
     });
 
@@ -58,8 +70,12 @@ describe("authMiddleware", () => {
 
         await authMiddleware(withToken(token), res, next);
 
-        expect(res.sendStatus).toHaveBeenCalledWith(401);
-        expect(next).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 401,
+            }),
+        );
+        expect(res.sendStatus).not.toHaveBeenCalled();
         expect(User.find).not.toHaveBeenCalled();
     });
 
@@ -72,8 +88,12 @@ describe("authMiddleware", () => {
         await authMiddleware(withToken(token), res, next);
 
         expect(User.find).toHaveBeenCalledWith("alice");
-        expect(res.sendStatus).toHaveBeenCalledWith(401);
-        expect(next).not.toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({
+                status: 401,
+            }),
+        );
+        expect(res.sendStatus).not.toHaveBeenCalled();
     });
 
     test("valid token: puts the current user (without password) in req.user and calls next()", async () => {

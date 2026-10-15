@@ -1,14 +1,13 @@
 const db = require("../db");
 const Status = require("./status");
-
-const invalid = (message) => Object.assign(new Error(message), { status: 400 });
+const { badRequest } = require("../errors");
 
 const StatusHistory = {
     Status,
 
     async create(request_id, changed_by_id, old_status, new_status) {
         if (!Object.values(StatusHistory.Status).includes(new_status)) {
-            throw invalid(`Invalid status`);
+            throw badRequest("Invalid status", new_status);
         }
         const { rows } = await db.query(
             `INSERT INTO request_status_history (request_id, changed_by, old_status, new_status)

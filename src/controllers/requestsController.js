@@ -1,5 +1,6 @@
 const Request = require("../models/requests");
 const StatusHistory = require("../models/statusHistory");
+const { notFound, forbidden, badRequest } = require("../errors");
 
 function canView(user, request) {
     if (user.role === "admin") return true;
@@ -17,9 +18,7 @@ exports.create = async (req, res) => {
     const { category_id, title, description } = req.body;
 
     if (!category_id || !title || !description) {
-        return res.status(400).json({
-            message: "category_id, title and description are required",
-        });
+        throw badRequest("category_id, title and description are required");
     }
 
     res.json({
@@ -36,11 +35,11 @@ exports.get = async (req, res) => {
     const request = await Request.get(req.params.id);
 
     if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        throw notFound("Request not found");
     }
 
     if (!canView(req.user, request)) {
-        return res.status(403).json({ message: "Forbidden" });
+        throw forbidden();
     }
 
     res.json({ request });
@@ -50,7 +49,7 @@ exports.set_status = async (req, res) => {
     const request = await Request.get(req.params.id);
 
     if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        throw notFound("Request not found");
     }
 
     const allowed =
@@ -59,11 +58,11 @@ exports.set_status = async (req, res) => {
             request.assigned_operator_id === req.user.id);
 
     if (!allowed) {
-        return res.status(403).json({ message: "Forbidden" });
+        throw forbidden();
     }
 
     if (!Object.values(Request.Status).includes(req.body.status)) {
-        return res.status(400).json({ message: "Invalid status" });
+        throw badRequest("Invalid status", req.body.status);
     }
 
     const old_status = request.status;
@@ -83,33 +82,27 @@ exports.set_status = async (req, res) => {
     });
 };
 
-exports.list = async (req, res, next) => {
-    try {
-        const result = await Request.list({
-            ...req.query,
-            currentUserId: req.user.id,
-            currentUserRole: req.user.role,
-        });
+exports.list = async (req, res) => {
+    const result = await Request.list({
+        ...req.query,
+        currentUserId: req.user.id,
+        currentUserRole: req.user.role,
+    });
 
-        res.json(result);
-    } catch (error) {
-        next(error);
-    }
+    res.json(result);
 };
 
 exports.assign_operator = async (req, res) => {
     const request = await Request.get(req.params.id);
 
     if (!request) {
-        return res.status(404).json({ message: "Request not found" });
+        throw notFound("Request not found");
     }
 
     const operatorId = Number(req.body.operator_id);
 
     if (!Number.isInteger(operatorId)) {
-        return res
-            .status(400)
-            .json({ message: "operator_id must be an integer" });
+        throw badRequest("operator_id must be an integer");
     }
 
     const allowed =
@@ -119,7 +112,7 @@ exports.assign_operator = async (req, res) => {
             operatorId === req.user.id);
 
     if (!allowed) {
-        return res.status(403).json({ message: "Forbidden" });
+        throw forbidden();
     }
 
     res.json({
