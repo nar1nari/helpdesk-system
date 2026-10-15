@@ -391,9 +391,7 @@ describe("Requests API", () => {
                 .send({ status: Request.Status.IN_PROGRESS });
 
             expect(res.status).toBe(200);
-            expect(res.body.status).toEqual({
-                status: Request.Status.IN_PROGRESS,
-            });
+            expect(res.body.status).toBe(Request.Status.IN_PROGRESS);
             expect((await Request.get(created.id)).status).toBe(
                 Request.Status.IN_PROGRESS,
             );
