@@ -14,15 +14,20 @@ describe("Auth API", () => {
     describe("POST /auth/register", () => {
         test("registers new user", async () => {
             const res = await request(app).post("/auth/register").send(creds);
-            expect(res.status).toBe(200);
-            expect(res.body).toEqual({ message: "User registered" });
+            expect(res.status).toBe(201);
+            expect(res.body.user).toEqual({
+                id: expect.any(Number),
+                is_active: true,
+                role: "applicant",
+                username: creds.username,
+            });
         });
 
-        test("400 when registers existing username", async () => {
+        test("401 when registers existing username", async () => {
             await request(app).post("/auth/register").send(creds);
             const res = await request(app).post("/auth/register").send(creds);
-            expect(res.status).toBe(400);
-            expect(res.body.error.message).toBe("Username already exists");
+            expect(res.status).toBe(401);
+            expect(res.body.error.message).toBe("Username already taken");
         });
 
         test("password is hashed", async () => {
@@ -49,7 +54,7 @@ describe("Auth API", () => {
             const res = await request(app).post("/auth/login").send(creds);
             expect(res.status).toBe(200);
             const payload = jwt.verify(res.body.token, process.env.JWT_SECRET);
-            expect(payload.username).toBe(creds.username);
+            expect(payload.sub).toBe(1);
             expect(payload.exp).toBeGreaterThan(payload.iat);
         });
 

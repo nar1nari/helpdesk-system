@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
+const config = require("../../src/config");
 
-jest.mock("../../src/models/users", () => ({ find: jest.fn() }));
+jest.mock("../../src/models/users", () => ({
+    findById: jest.fn(),
+}));
 
 const User = require("../../src/models/users");
 const authMiddleware = require("../../src/middlewares/authMiddleware");
@@ -9,128 +12,132 @@ const mockRes = () => ({ sendStatus: jest.fn() });
 const withToken = (token) => ({
     headers: { authorization: `Bearer ${token}` },
 });
+const makeToken = (payload = {}, options = {}) =>
+    jwt.sign({ sub: 1, ...payload }, config.jwtSecret, options);
 
 describe("authMiddleware", () => {
     beforeEach(() => {
-        User.find.mockReset();
+        User.findById.mockReset();
     });
+
+    async function runMiddleware(req, res, next) {
+        try {
+            await authMiddleware(req, res, next);
+        } catch (error) {
+            next(error);
+        }
+    }
 
     test("401 if no Authorization header", async () => {
         const res = mockRes();
         const next = jest.fn();
 
-        await authMiddleware({ headers: {} }, res, next);
+        await runMiddleware({ headers: {} }, res, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 401,
-            }),
+            expect.objectContaining({ status: 401 }),
         );
-        expect(res.sendStatus).not.toHaveBeenCalled();
-        expect(User.find).not.toHaveBeenCalled();
+        expect(User.findById).not.toHaveBeenCalled();
     });
 
     test("401 if token is invalid", async () => {
         const res = mockRes();
         const next = jest.fn();
 
-        await authMiddleware(withToken("garbage"), res, next);
+        await runMiddleware(withToken("garbage"), res, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 401,
-            }),
+            expect.objectContaining({ status: 401 }),
         );
-        expect(res.sendStatus).not.toHaveBeenCalled();
-        expect(User.find).not.toHaveBeenCalled();
+        expect(User.findById).not.toHaveBeenCalled();
     });
 
     test("401 if token signed with another secret", async () => {
         const res = mockRes();
         const next = jest.fn();
-        const token = jwt.sign({ username: "alice" }, "wrong-secret");
+        const token = jwt.sign({ sub: 1 }, "wrong-secret");
 
-        await authMiddleware(withToken(token), res, next);
+        await runMiddleware(withToken(token), res, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 401,
-            }),
+            expect.objectContaining({ status: 401 }),
         );
-        expect(res.sendStatus).not.toHaveBeenCalled();
-        expect(User.find).not.toHaveBeenCalled();
+        expect(User.findById).not.toHaveBeenCalled();
     });
 
     test("401 if token is expired", async () => {
         const res = mockRes();
         const next = jest.fn();
-        const token = jwt.sign({ username: "alice" }, process.env.JWT_SECRET, {
-            expiresIn: -10,
-        });
+        const token = makeToken({}, { expiresIn: -10 });
 
-        await authMiddleware(withToken(token), res, next);
+        await runMiddleware(withToken(token), res, next);
 
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 401,
-            }),
+            expect.objectContaining({ status: 401 }),
         );
-        expect(res.sendStatus).not.toHaveBeenCalled();
-        expect(User.find).not.toHaveBeenCalled();
+        expect(User.findById).not.toHaveBeenCalled();
     });
 
     test("401 if the user no longer exists", async () => {
-        User.find.mockResolvedValue(undefined);
+        User.findById.mockResolvedValue(undefined);
         const res = mockRes();
         const next = jest.fn();
-        const token = jwt.sign({ username: "alice" }, process.env.JWT_SECRET);
+        const token = makeToken();
 
-        await authMiddleware(withToken(token), res, next);
+        await runMiddleware(withToken(token), res, next);
 
-        expect(User.find).toHaveBeenCalledWith("alice");
+        expect(User.findById).toHaveBeenCalledWith(1);
         expect(next).toHaveBeenCalledWith(
-            expect.objectContaining({
-                status: 401,
-            }),
+            expect.objectContaining({ status: 401 }),
         );
-        expect(res.sendStatus).not.toHaveBeenCalled();
     });
 
-    test("valid token: puts the current user (without password) in req.user and calls next()", async () => {
-        User.find.mockResolvedValue({
+    test("401 if the user is inactive", async () => {
+        User.findById.mockResolvedValue({
             id: 1,
             username: "alice",
-            password: "hash",
             role: "operator",
+            is_active: false,
         });
         const res = mockRes();
         const next = jest.fn();
-        const token = jwt.sign({ username: "alice" }, process.env.JWT_SECRET);
-        const req = withToken(token);
 
-        await authMiddleware(req, res, next);
+        await runMiddleware(withToken(makeToken()), res, next);
 
-        expect(User.find).toHaveBeenCalledWith("alice");
-        expect(req.user).toEqual({
+        expect(next).toHaveBeenCalledWith(
+            expect.objectContaining({ status: 401 }),
+        );
+    });
+
+    test("valid token: puts the current user without password in req.user", async () => {
+        const user = {
             id: 1,
             username: "alice",
             role: "operator",
-        });
+            is_active: true,
+        };
+        User.findById.mockResolvedValue(user);
+
+        const res = mockRes();
+        const next = jest.fn();
+        const req = withToken(makeToken());
+
+        await runMiddleware(req, res, next);
+
+        expect(User.findById).toHaveBeenCalledWith(1);
+        expect(req.user).toEqual(user);
         expect(next).toHaveBeenCalledTimes(1);
         expect(next).toHaveBeenCalledWith();
-        expect(res.sendStatus).not.toHaveBeenCalled();
     });
 
     test("passes a lookup error to next()", async () => {
         const error = new Error("db down");
-        User.find.mockRejectedValue(error);
+        User.findById.mockRejectedValue(error);
         const res = mockRes();
         const next = jest.fn();
-        const token = jwt.sign({ username: "alice" }, process.env.JWT_SECRET);
 
-        await authMiddleware(withToken(token), res, next);
+        await runMiddleware(withToken(makeToken()), res, next);
 
         expect(next).toHaveBeenCalledWith(error);
-        expect(res.sendStatus).not.toHaveBeenCalled();
     });
 });

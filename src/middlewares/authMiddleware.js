@@ -1,31 +1,25 @@
 const jwt = require("jsonwebtoken");
-const jwtSecret = require("../config").jwtSecret;
+const config = require("../config");
 const User = require("../models/users");
 const { unauthorized } = require("../errors");
 
 async function authMiddleware(req, res, next) {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-    if (!token) return next(unauthorized());
+    const match = /^Bearer (.+)$/i.exec(req.headers.authorization ?? "");
+    if (!match) throw unauthorized();
 
     let payload;
     try {
-        payload = jwt.verify(token, jwtSecret);
+        payload = jwt.verify(match[1], config.jwtSecret, {
+            algorithms: ["HS256"],
+        });
     } catch {
-        return next(unauthorized());
+        throw unauthorized("Invalid or expired token");
     }
 
-    try {
-        const user = await User.find(payload.username);
-        if (!user) return next(unauthorized());
-
-        const safeUser = { ...user };
-        delete safeUser.password;
-        req.user = safeUser;
-        next();
-    } catch (err) {
-        next(err);
-    }
+    const user = await User.findById(payload.sub);
+    if (!user || !user.is_active) throw unauthorized();
+    req.user = user;
+    next();
 }
 
 module.exports = authMiddleware;

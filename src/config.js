@@ -23,4 +23,5 @@ module.exports = {
     databaseUrl: env.DATABASE_URL,
     jwtSecret: env.JWT_SECRET,
     jwtExpires: env.JWT_EXPIRES,
+    bcryptRounds: env.NODE_ENV === "test" ? 4 : 12,
 };

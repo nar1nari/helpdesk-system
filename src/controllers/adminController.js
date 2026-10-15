@@ -1,35 +1,22 @@
-const bcrypt = require("bcryptjs");
-const User = require("../models/users");
+const { createUser } = require("../services/userService");
 const StatusHistory = require("../models/statusHistory");
 const { badRequest, forbidden } = require("../errors");
 
 exports.createUser = async (req, res) => {
-    if (!req.user || req.user.role !== User.Role.ADMIN) {
-        throw forbidden();
-    }
-    const { username, password } = req.body;
-    if (await User.find(username))
-        throw badRequest("User already exists", username);
+    let user = await createUser(req.body);
+    res.status(201).json({ user: user });
+};
 
-    const hashed = await bcrypt.hash(password, 10);
-    await User.create(username, hashed);
-    res.json({ message: "User registered" });
+exports.listUsers = async (req, res) => {
+    res.json({ users: await User.all() });
+};
+
+exports.updateUser = async (req, res) => {
+    res.json({ user: await User.update(req.params.id, req.body) });
 };
 
 exports.getStatusHistory = async (req, res) => {
-    if (!req.user || req.user.role !== User.Role.ADMIN) {
-        throw forbidden();
-    }
     const { requestId } = req.params;
     const statusHistory = await StatusHistory.getBy(requestId);
     res.json({ status_history: statusHistory });
-};
-
-exports.deleteUser = async (req, res) => {
-    if (!req.user || req.user.role !== User.Role.ADMIN) {
-        throw forbidden();
-    }
-    const { username } = req.params;
-    const deleted = await User.delete(username);
-    res.json({ user: deleted });
 };
