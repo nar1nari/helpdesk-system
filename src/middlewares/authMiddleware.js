@@ -18,7 +18,8 @@ async function authMiddleware(req, res, next) {
         const user = await User.find(payload.username);
         if (!user) return res.sendStatus(401);
 
-        const { password, ...safeUser } = user;
+        const safeUser = { ...user };
+        delete safeUser.password;
         req.user = safeUser;
         next();
     } catch (err) {

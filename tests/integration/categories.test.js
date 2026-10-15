@@ -1,5 +1,4 @@
 const request = require("supertest");
-const jwt = require("jsonwebtoken");
 const createApp = require("../helpers/createApp");
 
 describe("Categories API", () => {

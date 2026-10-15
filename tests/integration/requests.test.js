@@ -5,8 +5,6 @@ const Category = require("../../src/models/categories");
 const Request = require("../../src/models/requests");
 const createAuthHelpers = require("../helpers/authHelpers");
 
-const password = "secret123";
-
 describe("Requests API", () => {
     let app;
     let category;

@@ -1,4 +1,3 @@
-const fs = require("node:fs/promises");
 const Comment = require("../models/comments");
 const Request = require("../models/requests");
 
@@ -8,7 +7,7 @@ function canView(user, request) {
     if (user.role === "applicant") return request.user_id === user.id;
 }
 
-exports.create = async (req, res, next) => {
+exports.create = async (req, res) => {
     const request = await Request.get(req.params.id);
     if (!request) {
         return res.status(404).json({ message: "Request not found" });
@@ -30,7 +29,7 @@ exports.create = async (req, res, next) => {
     res.json({ comment: comment });
 };
 
-exports.get = async (req, res, next) => {
+exports.get = async (req, res) => {
     const request = await Request.get(req.params.id);
     if (!request) {
         return res.status(404).json({ message: "Request not found" });
