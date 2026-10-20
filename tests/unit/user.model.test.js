@@ -16,7 +16,7 @@ describe("User model", () => {
     });
 
     test("find() finds user", async () => {
-        const user = await User.create("alice", "secret123");
+        await User.create("alice", "secret123");
         expect(await User.find("alice")).toMatchObject({
             username: "alice",
             role: "applicant",
