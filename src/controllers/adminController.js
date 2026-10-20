@@ -1,6 +1,6 @@
 const { createUser } = require("../services/userService");
 const StatusHistory = require("../models/statusHistory");
-const { badRequest, forbidden } = require("../errors");
+const User = require("../models/users");
 
 exports.createUser = async (req, res) => {
     let user = await createUser(req.body);
@@ -12,7 +12,12 @@ exports.listUsers = async (req, res) => {
 };
 
 exports.updateUser = async (req, res) => {
-    res.json({ user: await User.update(req.params.id, req.body) });
+    let user = await User.findById(req.params.id);
+    if (req.body.role)
+        user = await User.changeRole(req.params.id, req.body.role);
+    if (req.body.isActive)
+        user = await User.changeActive(req.params.id, req.body.isActive);
+    res.json({ user: user });
 };
 
 exports.getStatusHistory = async (req, res) => {

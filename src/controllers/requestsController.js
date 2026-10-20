@@ -2,18 +2,6 @@ const Request = require("../models/requests");
 const StatusHistory = require("../models/statusHistory");
 const { notFound, forbidden, badRequest } = require("../errors");
 
-function canView(user, request) {
-    if (user.role === "admin") return true;
-    if (user.role === "applicant") return request.user_id === user.id;
-    if (user.role === "operator") {
-        return (
-            request.assigned_operator_id === null ||
-            request.assigned_operator_id === user.id
-        );
-    }
-    return false;
-}
-
 exports.create = async (req, res) => {
     const { category_id, title, description } = req.body;
 
@@ -34,36 +22,11 @@ exports.create = async (req, res) => {
 exports.get = async (req, res) => {
     const request = await Request.get(req.params.id);
 
-    if (!request) {
-        throw notFound("Request not found");
-    }
-
-    if (!canView(req.user, request)) {
-        throw forbidden();
-    }
-
     res.json({ request });
 };
 
 exports.set_status = async (req, res) => {
     const request = await Request.get(req.params.id);
-
-    if (!request) {
-        throw notFound("Request not found");
-    }
-
-    const allowed =
-        req.user.role === "admin" ||
-        (req.user.role === "operator" &&
-            request.assigned_operator_id === req.user.id);
-
-    if (!allowed) {
-        throw forbidden();
-    }
-
-    if (!Object.values(Request.Status).includes(req.body.status)) {
-        throw badRequest("Invalid status", req.body.status);
-    }
 
     const old_status = request.status;
     const new_status = (

@@ -105,7 +105,7 @@ describe("Requests API", () => {
             expect(res.status).toBe(404);
         });
 
-        test("403 when applicant opens someone else's request", async () => {
+        test("404 when applicant opens someone else's request", async () => {
             const alice = await signUp("alice");
             const bob = await signUp("bob");
             const created = await createRequest(alice.token);
@@ -114,10 +114,10 @@ describe("Requests API", () => {
                 .get(`/requests/${created.id}`)
                 .set(auth(bob.token));
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
-        test("403 when operator opens request assigned to another operator", async () => {
+        test("404 when operator opens request assigned to another operator", async () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
@@ -128,7 +128,7 @@ describe("Requests API", () => {
                 .get(`/requests/${created.id}`)
                 .set(auth(operator.token));
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
         test("operator can open an unassigned request", async () => {
@@ -330,7 +330,7 @@ describe("Requests API", () => {
             expect(res.status).toBe(404);
         });
 
-        test("403 for applicant", async () => {
+        test("404 for applicant", async () => {
             const alice = await signUp("alice");
             const created = await createRequest(alice.token);
 
@@ -339,14 +339,14 @@ describe("Requests API", () => {
                 .set(auth(alice.token))
                 .send({ status: Request.Status.IN_PROGRESS });
 
-            expect(res.status).toBe(403);
-            expect(res.body.error.message).toBe("Forbidden");
+            expect(res.status).toBe(404);
+            expect(res.body.error.message).toBe("Request not found");
             expect((await Request.get(created.id)).status).toBe(
                 Request.Status.NEW,
             );
         });
 
-        test("403 for operator when request is not assigned to them", async () => {
+        test("404 for operator when request is not assigned to them", async () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
@@ -358,13 +358,13 @@ describe("Requests API", () => {
                 .set(auth(operator.token))
                 .send({ status: Request.Status.IN_PROGRESS });
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
             expect((await Request.get(created.id)).status).toBe(
                 Request.Status.NEW,
             );
         });
 
-        test("403 for operator when request is unassigned", async () => {
+        test("404 for operator when request is unassigned", async () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const created = await createRequest(alice.token);
@@ -374,7 +374,7 @@ describe("Requests API", () => {
                 .set(auth(operator.token))
                 .send({ status: Request.Status.IN_PROGRESS });
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
         test("updates status for assigned operator", async () => {

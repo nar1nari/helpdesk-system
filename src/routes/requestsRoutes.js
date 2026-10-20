@@ -15,46 +15,45 @@ const {
     get: get_comments,
 } = require("../controllers/commentsController");
 const authMiddleware = require("../middlewares/authMiddleware");
+const loadRequest = require("../middlewares/loadRequest");
 const validate = require("../middlewares/validate");
 const { idParams } = require("../validators/common");
+const { canChangeStatus } = require("../policies/requestPolicy");
 
 const router = express.Router();
+router.use(authMiddleware);
+
 const upload = multer({ dest: "uploads/tmp" });
 
-router.get("/", authMiddleware, list);
-router.post("/", authMiddleware, create);
-router.get("/:id", authMiddleware, validate({ params: idParams }), get);
+router.get("/", list);
+router.post("/", create);
+router.get("/:id", validate({ params: idParams }), loadRequest(), get);
 router.patch(
     "/:id/status",
-    authMiddleware,
     validate({ params: idParams }),
+    loadRequest(canChangeStatus),
     set_status,
 );
-router.patch(
-    "/:id/assign",
-    authMiddleware,
-    validate({ params: idParams }),
-    assign_operator,
-);
+router.patch("/:id/assign", validate({ params: idParams }), assign_operator);
 
 router.post(
     "/:id/attachments",
-    authMiddleware,
     validate({ params: idParams }),
+    loadRequest(),
     upload.single("file"),
     create_attachment,
 );
 
 router.post(
     "/:id/comments",
-    authMiddleware,
     validate({ params: idParams }),
+    loadRequest(),
     create_comment,
 );
 router.get(
     "/:id/comments",
-    authMiddleware,
     validate({ params: idParams }),
+    loadRequest(),
     get_comments,
 );
 

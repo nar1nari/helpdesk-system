@@ -115,7 +115,7 @@ describe("Attachments API", () => {
         });
 
         test.each(["applicant", "operator", "admin"])(
-            "403 when %s is not the request owner",
+            "404 when %s is not the request owner",
             async (role) => {
                 const alice = await signUp("alice");
                 const other = await signUp("other", role);
@@ -123,7 +123,7 @@ describe("Attachments API", () => {
 
                 const res = await upload(other.token, created.id);
 
-                expect(res.status).toBe(403);
+                expect(res.status).toBe(404);
                 expect(await countAttachments()).toBe(0);
             },
         );

@@ -18,5 +18,5 @@ const role = z.enum(User.Role).default(User.Role.APPLICANT);
 exports.createUser = z.object({ username, password, role });
 exports.updateUser = z.object({
     role: role.optional(),
-    is_active: z.boolean().optional(),
+    isActive: z.boolean().optional(),
 });
