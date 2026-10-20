@@ -1,20 +1,18 @@
 const Request = require("../models/requests");
+const Category = require("../models/categories");
 const StatusHistory = require("../models/statusHistory");
 const { notFound, forbidden, badRequest } = require("../errors");
 
 exports.create = async (req, res) => {
-    const { category_id, title, description } = req.body;
+    if (!(await Category.findById(req.body.category_id)))
+        throw badRequest("Unknown category_id");
 
-    if (!category_id || !title || !description) {
-        throw badRequest("category_id, title and description are required");
-    }
-
-    res.json({
+    res.status(201).json({
         request: await Request.create(
             req.user.id,
-            category_id,
-            title,
-            description,
+            req.body.category_id,
+            req.body.title,
+            req.body.description,
         ),
     });
 };
@@ -46,10 +44,31 @@ exports.set_status = async (req, res) => {
 };
 
 exports.list = async (req, res) => {
+    const {
+        status,
+        category_id,
+        assigned_operator_id,
+        date_from,
+        date_to,
+        search,
+        sort_by,
+        sort_order,
+        page,
+        limit,
+    } = req.query;
+
     const result = await Request.list({
-        ...req.query,
-        currentUserId: req.user.id,
-        currentUserRole: req.user.role,
+        status,
+        category_id,
+        assigned_operator_id,
+        date_from,
+        date_to,
+        search,
+        sort_by,
+        sort_order,
+        page,
+        limit,
+        user: req.user,
     });
 
     res.json(result);

@@ -20,3 +20,6 @@ exports.updateUser = z.object({
     role: role.optional(),
     isActive: z.boolean().optional(),
 });
+
+const categoryName = z.string().trim().min(1).max(50);
+exports.createCategory = z.object({ name: categoryName });

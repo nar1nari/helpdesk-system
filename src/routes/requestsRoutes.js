@@ -18,6 +18,10 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const loadRequest = require("../middlewares/loadRequest");
 const validate = require("../middlewares/validate");
 const { idParams } = require("../validators/common");
+const {
+    create: createSchema,
+    list: listSchena,
+} = require("../validators/requests");
 const { canChangeStatus } = require("../policies/requestPolicy");
 
 const router = express.Router();
@@ -25,8 +29,8 @@ router.use(authMiddleware);
 
 const upload = multer({ dest: "uploads/tmp" });
 
-router.get("/", list);
-router.post("/", create);
+router.get("/", validate({ query: listSchena }), list);
+router.post("/", validate({ body: createSchema }), create);
 router.get("/:id", validate({ params: idParams }), loadRequest(), get);
 router.patch(
     "/:id/status",

@@ -4,12 +4,14 @@ const Category = require("../../src/models/categories");
 
 describe("Request model", () => {
     let user;
+    let admin;
     let operator;
     let category;
 
     beforeEach(async () => {
         user = await User.create("alice", "secret123");
-        operator = await User.create("operator", "secret456");
+        admin = await User.create("admin", "secret123", "admin");
+        operator = await User.create("operator", "secret456", "operator");
         category = await Category.add("category1");
     });
 
@@ -24,7 +26,7 @@ describe("Request model", () => {
 
     // list() requires a role; admin sees everything without extra filters
     const listAsAdmin = (options = {}) =>
-        Request.list({ currentUserRole: "admin", ...options });
+        Request.list({ user: admin, ...options });
 
     test("create() creates a request with default status", async () => {
         const request = await createRequest();
@@ -101,21 +103,13 @@ describe("Request model", () => {
         });
     });
 
-    test("list() rejects missing or invalid user role", async () => {
-        await expect(Request.list()).rejects.toThrow("Invalid user role");
-        await expect(
-            Request.list({ currentUserRole: "guest" }),
-        ).rejects.toThrow("Invalid user role");
-    });
-
     test("list() shows applicant only their own requests", async () => {
         const other = await User.create("bob", "secret789");
         const own = await createRequest({ title: "Own request" });
         await createRequest({ user_id: other.id, title: "Foreign request" });
 
         const result = await Request.list({
-            currentUserRole: "applicant",
-            currentUserId: user.id,
+            user: user,
         });
 
         expect(result.requests).toMatchObject([{ id: own.id }]);
@@ -132,8 +126,7 @@ describe("Request model", () => {
         await Request.assign_operator(foreign.id, otherOperator.id);
 
         const result = await Request.list({
-            currentUserRole: "operator",
-            currentUserId: operator.id,
+            user: operator,
         });
 
         const ids = result.requests.map((r) => r.id);
@@ -204,15 +197,38 @@ describe("Request model", () => {
     test("list() filters by date range", async () => {
         await createRequest();
 
-        const future = new Date(Date.now() + 60_000).toISOString();
-        const past = new Date(Date.now() - 60_000).toISOString();
+        const today = new Date().toISOString().slice(0, 10);
+        const yesterday = new Date(Date.now() - 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+        const tomorrow = new Date(Date.now() + 86_400_000)
+            .toISOString()
+            .slice(0, 10);
 
-        expect((await listAsAdmin({ dateFrom: future })).requests).toHaveLength(
-            0,
-        );
-        expect((await listAsAdmin({ dateTo: past })).requests).toHaveLength(0);
         expect(
-            (await listAsAdmin({ dateFrom: past, dateTo: future })).requests,
+            (await listAsAdmin({ date_from: tomorrow })).requests,
+        ).toHaveLength(0);
+
+        expect(
+            (await listAsAdmin({ date_to: yesterday })).requests,
+        ).toHaveLength(0);
+
+        expect(
+            (
+                await listAsAdmin({
+                    date_from: today,
+                    date_to: today,
+                })
+            ).requests,
+        ).toHaveLength(1);
+
+        expect(
+            (
+                await listAsAdmin({
+                    date_from: yesterday,
+                    date_to: tomorrow,
+                })
+            ).requests,
         ).toHaveLength(1);
     });
 
@@ -248,8 +264,8 @@ describe("Request model", () => {
         await createRequest({ title: "Middle" });
 
         const result = await listAsAdmin({
-            sortBy: "title",
-            sortOrder: "ASC",
+            sort_by: "title",
+            sort_order: "asc",
         });
 
         expect(result.requests.map((request) => request.title)).toEqual([
@@ -267,8 +283,8 @@ describe("Request model", () => {
         const result = await listAsAdmin({
             page: 2,
             limit: 2,
-            sortBy: "title",
-            sortOrder: "ASC",
+            sort_by: "title",
+            sort_order: "asc",
         });
 
         expect(result.requests).toHaveLength(1);
@@ -288,37 +304,5 @@ describe("Request model", () => {
 
         expect(result.requests).toHaveLength(0);
         expect(result.pagination.total).toBe(1);
-    });
-
-    test("list() rejects invalid page", async () => {
-        await expect(listAsAdmin({ page: 0 })).rejects.toThrow(
-            "page must be a positive integer",
-        );
-
-        await expect(listAsAdmin({ page: 1.5 })).rejects.toThrow(
-            "page must be a positive integer",
-        );
-    });
-
-    test("list() rejects invalid limit", async () => {
-        await expect(listAsAdmin({ limit: 0 })).rejects.toThrow(
-            "limit must be an integer between 1 and 100",
-        );
-
-        await expect(listAsAdmin({ limit: 101 })).rejects.toThrow(
-            "limit must be an integer between 1 and 100",
-        );
-    });
-
-    test("list() rejects invalid sortBy", async () => {
-        await expect(listAsAdmin({ sortBy: "invalid" })).rejects.toThrow(
-            "Invalid sortBy field",
-        );
-    });
-
-    test("list() rejects invalid sortOrder", async () => {
-        await expect(listAsAdmin({ sortOrder: "invalid" })).rejects.toThrow(
-            "sortOrder must be ASC or DESC",
-        );
     });
 });

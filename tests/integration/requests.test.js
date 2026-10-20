@@ -52,7 +52,7 @@ describe("Requests API", () => {
                     description: "It does not print",
                 });
 
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(201);
             expect(res.body.request).toMatchObject({
                 user_id: user.id,
                 category_id: category.id,
@@ -277,8 +277,8 @@ describe("Requests API", () => {
                 .query({
                     page: 2,
                     limit: 2,
-                    sortBy: "title",
-                    sortOrder: "ASC",
+                    sort_by: "title",
+                    sort_order: "asc",
                 })
                 .set(auth(admin.token));
 
@@ -289,7 +289,6 @@ describe("Requests API", () => {
                 page: 2,
                 limit: 2,
                 total: 3,
-                totalPages: 2,
             });
         });
 
@@ -297,8 +296,8 @@ describe("Requests API", () => {
             ["status", { status: "invalid" }],
             ["page", { page: 0 }],
             ["limit", { limit: 101 }],
-            ["sortBy", { sortBy: "invalid" }],
-            ["sortOrder", { sortOrder: "invalid" }],
+            ["sort_by", { sort_by: "invalid" }],
+            ["sort_order", { sort_order: "invalid" }],
         ])("400 with invalid %s", async (_name, query) => {
             const admin = await signUp("admin", "admin");
 

@@ -3,11 +3,11 @@ const Status = require("./status");
 const { badRequest } = require("../errors");
 
 const SORT_FIELDS = Object.freeze({
-    id: "id",
-    title: "title",
-    status: "status",
-    created_at: "created_at",
-    updated_at: "updated_at",
+    id: "r.id",
+    title: "r.title",
+    status: "r.status",
+    created_at: "r.created_at",
+    updated_at: "r.updated_at",
 });
 
 const Request = {
@@ -53,39 +53,18 @@ const Request = {
     async list({
         status,
         category_id,
-        dateFrom,
-        dateTo,
+        date_from,
+        date_to,
         assigned_operator_id,
         search,
-        sortBy = "created_at",
-        sortOrder = "DESC",
+        sort_by = "created_at",
+        sort_order = "desc",
         page = 1,
         limit = 20,
-        currentUserId,
-        currentUserRole,
+        user,
     } = {}) {
-        page = Number(page);
-        limit = Number(limit);
-
-        if (!Number.isInteger(page) || page < 1) {
-            throw badRequest("page must be a positive integer");
-        }
-
-        if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-            throw badRequest("limit must be an integer between 1 and 100");
-        }
-
-        const sortColumn = SORT_FIELDS[sortBy];
-
-        if (!sortColumn) {
-            throw badRequest("Invalid sortBy field");
-        }
-
-        sortOrder = String(sortOrder).toUpperCase();
-
-        if (!["ASC", "DESC"].includes(sortOrder)) {
-            throw badRequest("sortOrder must be ASC or DESC");
-        }
+        const col = SORT_FIELDS[sort_by] ?? SORT_FIELDS.created_at;
+        const dir = sort_order === "asc" ? "ASC" : "DESC";
 
         const conditions = [];
         const values = [];
@@ -95,45 +74,54 @@ const Request = {
             conditions.push(condition.replaceAll("?", `$${values.length}`));
         };
 
-        if (currentUserRole === "applicant") {
-            addFilter("user_id = ?", currentUserId);
-        } else if (currentUserRole === "operator") {
+        if (
+            status !== undefined &&
+            !Object.values(Request.Status).includes(status)
+        ) {
+            throw badRequest("Invalid status", status);
+        }
+
+        if (user.role === "applicant") {
+            addFilter("r.user_id = ?", user.id);
+        } else if (user.role === "operator") {
             addFilter(
-                "(assigned_operator_id = ? OR assigned_operator_id IS NULL)",
-                currentUserId,
+                "(r.assigned_operator_id = ? OR r.assigned_operator_id IS NULL)",
+                user.id,
             );
-        } else if (currentUserRole !== "admin") {
+        } else if (user.role !== "admin") {
             throw new Error("Invalid user role");
         }
 
-        if (status !== undefined && status !== "") {
-            if (!Object.values(Status).includes(status)) {
-                throw badRequest("Invalid status");
-            }
-
-            addFilter("status = ?", status);
+        if (status !== undefined) {
+            addFilter("r.status = ?", status);
         }
 
-        if (category_id !== undefined && category_id !== "") {
-            addFilter("category_id = ?", category_id);
+        if (category_id !== undefined) {
+            addFilter("r.category_id = ?", category_id);
         }
 
-        if (assigned_operator_id !== undefined && assigned_operator_id !== "") {
-            addFilter("assigned_operator_id = ?", assigned_operator_id);
+        if (assigned_operator_id !== undefined) {
+            addFilter("r.assigned_operator_id = ?", assigned_operator_id);
         }
 
-        if (dateFrom) {
-            addFilter("created_at >= ?", dateFrom);
+        if (date_from) {
+            addFilter("r.created_at >= ?::date", date_from);
         }
 
-        if (dateTo) {
-            addFilter("created_at <= ?", dateTo);
+        if (date_to) {
+            addFilter("r.created_at < (?::date + 1)", date_to);
         }
 
-        if (search && search.trim()) {
-            addFilter(
-                "(title ILIKE ? OR description ILIKE ?)",
-                `%${search.trim()}%`,
+        if (search) {
+            const escapedSearch = search.replace(/[\\%_]/g, "\\$&");
+            const pattern = `%${escapedSearch}%`;
+
+            values.push(pattern);
+            const searchParam = `$${values.length}`;
+
+            conditions.push(
+                `(r.title ILIKE ${searchParam} ESCAPE '\\' OR ` +
+                    `r.description ILIKE ${searchParam} ESCAPE '\\')`,
             );
         }
 
@@ -143,8 +131,8 @@ const Request = {
 
         const countResult = await db.query(
             `SELECT COUNT(*)::int AS total
-             FROM requests
-             ${where}`,
+         FROM requests r
+         ${where}`,
             values,
         );
 
@@ -152,12 +140,13 @@ const Request = {
         const offset = (page - 1) * limit;
 
         const result = await db.query(
-            `SELECT *
-             FROM requests
-             ${where}
-             ORDER BY ${sortColumn} ${sortOrder} NULLS LAST, id DESC
-             LIMIT $${values.length + 1}
-             OFFSET $${values.length + 2}`,
+            `SELECT r.*, c.name AS category_name
+         FROM requests r
+         LEFT JOIN categories c ON c.id = r.category_id
+         ${where}
+         ORDER BY ${col} ${dir} NULLS LAST, r.id ${dir}
+         LIMIT $${values.length + 1}
+         OFFSET $${values.length + 2}`,
             [...values, limit, offset],
         );
 
