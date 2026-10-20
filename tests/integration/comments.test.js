@@ -71,14 +71,14 @@ describe("Comments API", () => {
             expect(res.status).toBe(404);
         });
 
-        test("403 when applicant is not the request owner", async () => {
+        test("404 when applicant is not the request owner", async () => {
             const alice = await signUp("alice");
             const other = await signUp("other", "applicant");
             const created = await createRequestFor(alice.user);
 
             const res = await sendComment(other.token, created.id);
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
         test.each(["operator", "admin"])(
@@ -153,7 +153,7 @@ describe("Comments API", () => {
             expect(res.text).toEqual(JSON.stringify({ comments: [comment] }));
         });
 
-        test("403 when applicant opens comments of someone else's request", async () => {
+        test("404 when applicant opens comments of someone else's request", async () => {
             const alice = await signUp("alice");
             const bob = await signUp("bob");
             const created = await createRequestFor(alice.user);
@@ -163,7 +163,7 @@ describe("Comments API", () => {
                 .get(`/requests/${created.id}/comments`)
                 .set(auth(bob.token));
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
         test("admin can view any comments", async () => {
