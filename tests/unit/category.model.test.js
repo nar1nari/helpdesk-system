@@ -1,4 +1,4 @@
-const Category = require("../../src/models/categories");
+const Category = require("../../src/models/category");
 
 describe("Category model", () => {
     test("category gets created successfully", async () => {

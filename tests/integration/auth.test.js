@@ -95,7 +95,7 @@ describe("Auth API", () => {
                 .get("/auth/me")
                 .set("Authorization", `Bearer ${login.body.token}`);
             expect(res.status).toBe(200);
-            expect(res.body.username).toBe(creds.username);
+            expect(res.body.user.username).toBe(creds.username);
         });
     });
 });

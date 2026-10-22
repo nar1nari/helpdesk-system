@@ -1,5 +1,5 @@
 const StatusHistory = require("../../src/models/statusHistory");
-const Category = require("../../src/models/categories");
+const Category = require("../../src/models/category");
 const User = require("../../src/models/users");
 const Request = require("../../src/models/requests");
 

@@ -1,5 +1,4 @@
 const { createUser } = require("../services/userService");
-const StatusHistory = require("../models/statusHistory");
 const User = require("../models/users");
 
 exports.createUser = async (req, res) => {
@@ -18,10 +17,4 @@ exports.updateUser = async (req, res) => {
     if (req.body.isActive)
         user = await User.changeActive(req.params.id, req.body.isActive);
     res.json({ user: user });
-};
-
-exports.getStatusHistory = async (req, res) => {
-    const { requestId } = req.params;
-    const statusHistory = await StatusHistory.getBy(requestId);
-    res.json({ status_history: statusHistory });
 };

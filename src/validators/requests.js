@@ -25,3 +25,7 @@ exports.list = z.object({
 });
 
 exports.status = z.object({ status: z.enum(Object.values(Status)) });
+
+exports.assignOperator = z.object({
+    operator_id: z.coerce.number().int().positive().max(2147483647),
+});

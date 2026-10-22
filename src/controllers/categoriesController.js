@@ -1,4 +1,4 @@
-const Category = require("../models/categories");
+const Category = require("../models/category");
 
 exports.all = async (req, res) => {
     res.json({ categories: await Category.all() });

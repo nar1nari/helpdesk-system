@@ -31,7 +31,7 @@ const Request = {
         return rows[0];
     },
 
-    async set_status(request_id, status) {
+    async setStatus(request_id, status) {
         if (!Object.values(Request.Status).includes(status)) {
             throw badRequest("Invalid status", status);
         }
@@ -42,9 +42,9 @@ const Request = {
         return rows[0];
     },
 
-    async assign_operator(request_id, operator_id) {
+    async assignOperator(request_id, operator_id) {
         const { rows } = await db.query(
-            "UPDATE requests SET assigned_operator_id = $1 WHERE id = $2 RETURNING assigned_operator_id",
+            "UPDATE requests SET assigned_operator_id = $1 WHERE id = $2 RETURNING *",
             [operator_id, request_id],
         );
         return rows[0];

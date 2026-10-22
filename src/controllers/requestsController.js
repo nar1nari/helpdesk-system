@@ -1,7 +1,7 @@
 const Request = require("../models/requests");
-const Category = require("../models/categories");
+const Category = require("../models/category");
 const StatusHistory = require("../models/statusHistory");
-const { notFound, forbidden, badRequest } = require("../errors");
+const { forbidden, badRequest } = require("../errors");
 const { assertCanTransition } = require("../policies/transitions");
 
 exports.create = async (req, res) => {
@@ -19,17 +19,15 @@ exports.create = async (req, res) => {
 };
 
 exports.get = async (req, res) => {
-    const request = await Request.get(req.params.id);
-
-    res.json({ request });
+    res.json({ request: req.request });
 };
 
-exports.set_status = async (req, res) => {
+exports.setStatus = async (req, res) => {
     const old_status = req.request.status;
 
     assertCanTransition(req.user, req.request, req.body.status);
 
-    const updated = await Request.set_status(req.params.id, req.body.status);
+    const updated = await Request.setStatus(req.params.id, req.body.status);
 
     await StatusHistory.create(
         req.params.id,
@@ -74,33 +72,26 @@ exports.list = async (req, res) => {
     res.json(result);
 };
 
-exports.assign_operator = async (req, res) => {
-    const request = await Request.get(req.params.id);
-
-    if (!request) {
-        throw notFound("Request not found");
-    }
-
-    const operatorId = Number(req.body.operator_id);
-
-    if (!Number.isInteger(operatorId)) {
-        throw badRequest("operator_id must be an integer");
-    }
-
+exports.assignOperator = async (req, res) => {
     const allowed =
         req.user.role === "admin" ||
         (req.user.role === "operator" &&
-            request.assigned_operator_id === null &&
-            operatorId === req.user.id);
+            req.request.assigned_operator_id === null &&
+            req.body.operator_id === req.user.id);
 
     if (!allowed) {
         throw forbidden();
     }
 
     res.json({
-        assigned_operator_id: await Request.assign_operator(
+        request: await Request.assignOperator(
             req.params.id,
-            operatorId,
+            req.body.operator_id,
         ),
     });
+};
+
+exports.getStatusHistory = async (req, res) => {
+    const statusHistory = await StatusHistory.getBy(req.params.id);
+    res.json({ status_history: statusHistory });
 };

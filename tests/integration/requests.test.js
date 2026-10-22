@@ -1,7 +1,7 @@
 const request = require("supertest");
 const createApp = require("../helpers/createApp");
 const db = require("../../src/db");
-const Category = require("../../src/models/categories");
+const Category = require("../../src/models/category");
 const Request = require("../../src/models/requests");
 const createAuthHelpers = require("../helpers/authHelpers");
 
@@ -122,7 +122,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assign_operator(created.id, other.user.id);
+            await Request.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .get(`/requests/${created.id}`)
@@ -191,8 +191,8 @@ describe("Requests API", () => {
             const foreign = await createRequest(alice.token, {
                 title: "Foreign",
             });
-            await Request.assign_operator(mine.id, operator.user.id);
-            await Request.assign_operator(foreign.id, other.user.id);
+            await Request.assignOperator(mine.id, operator.user.id);
+            await Request.assignOperator(foreign.id, other.user.id);
 
             const res = await request(app)
                 .get("/requests")
@@ -235,7 +235,7 @@ describe("Requests API", () => {
             const second = await createRequest(alice.token, {
                 title: "Second",
             });
-            await Request.set_status(second.id, Request.Status.IN_PROGRESS);
+            await Request.setStatus(second.id, Request.Status.IN_PROGRESS);
 
             const res = await request(app)
                 .get("/requests")
@@ -350,7 +350,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assign_operator(created.id, other.user.id);
+            await Request.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
@@ -380,7 +380,7 @@ describe("Requests API", () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const created = await createRequest(alice.token);
-            await Request.assign_operator(created.id, operator.user.id);
+            await Request.assignOperator(created.id, operator.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
@@ -484,9 +484,9 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(200);
-            expect(res.body.assigned_operator_id).toEqual({
-                assigned_operator_id: operator.user.id,
-            });
+            expect(res.body.request.assigned_operator_id).toEqual(
+                operator.user.id,
+            );
             expect((await Request.get(created.id)).assigned_operator_id).toBe(
                 operator.user.id,
             );
@@ -509,19 +509,19 @@ describe("Requests API", () => {
             );
         });
 
-        test("403 when operator takes an already assigned request", async () => {
+        test("404 when operator takes an already assigned request", async () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assign_operator(created.id, other.user.id);
+            await Request.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/assign`)
                 .set(auth(operator.token))
                 .send({ operator_id: operator.user.id });
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
             expect((await Request.get(created.id)).assigned_operator_id).toBe(
                 other.user.id,
             );
@@ -550,7 +550,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assign_operator(created.id, other.user.id);
+            await Request.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/assign`)

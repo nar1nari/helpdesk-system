@@ -4,7 +4,7 @@ const {
     create,
     update,
     remove,
-} = require("../controllers/categoryController");
+} = require("../controllers/categoriesController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const requireRole = require("../middlewares/requireRole");
 const validate = require("../middlewares/validate");

@@ -3,16 +3,17 @@ const multer = require("multer");
 const {
     create,
     get,
-    set_status,
+    setStatus,
     list,
-    assign_operator,
+    assignOperator,
+    getStatusHistory,
 } = require("../controllers/requestsController");
 const {
-    create: create_attachment,
+    create: createAttachment,
 } = require("../controllers/attachmentsController");
 const {
-    create: create_comment,
-    get: get_comments,
+    create: createComment,
+    get: getComments,
 } = require("../controllers/commentsController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const loadRequest = require("../middlewares/loadRequest");
@@ -22,6 +23,7 @@ const {
     create: createSchema,
     list: listSchena,
     status: statusSchema,
+    assignOperator: assignOperatorSchema,
 } = require("../validators/requests");
 const { canChangeStatus } = require("../policies/requestPolicy");
 
@@ -37,29 +39,40 @@ router.patch(
     "/:id/status",
     validate({ params: idParams, body: statusSchema }),
     loadRequest(canChangeStatus),
-    set_status,
+    setStatus,
 );
-router.patch("/:id/assign", validate({ params: idParams }), assign_operator);
+router.get(
+    "/requests/:id/status",
+    validate({ params: idParams }),
+    loadRequest(),
+    getStatusHistory,
+);
+router.patch(
+    "/:id/assign",
+    validate({ params: idParams, body: assignOperatorSchema }),
+    loadRequest(),
+    assignOperator,
+);
 
 router.post(
     "/:id/attachments",
     validate({ params: idParams }),
     loadRequest(),
     upload.single("file"),
-    create_attachment,
+    createAttachment,
 );
 
 router.post(
     "/:id/comments",
     validate({ params: idParams }),
     loadRequest(),
-    create_comment,
+    createComment,
 );
 router.get(
     "/:id/comments",
     validate({ params: idParams }),
     loadRequest(),
-    get_comments,
+    getComments,
 );
 
 module.exports = router;

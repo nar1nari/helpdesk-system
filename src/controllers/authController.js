@@ -27,9 +27,9 @@ exports.login = async (req, res) => {
             expiresIn: config.jwtExpires,
         },
     );
-    res.json({ token });
+    res.json({ token: token });
 };
 
 exports.me = (req, res) => {
-    res.json(req.user);
+    res.json({ user: req.user });
 };

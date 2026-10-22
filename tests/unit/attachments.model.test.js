@@ -5,7 +5,7 @@ const crypto = require("crypto");
 
 const db = require("../../src/db");
 const User = require("../../src/models/users");
-const Category = require("../../src/models/categories");
+const Category = require("../../src/models/category");
 const Request = require("../../src/models/requests");
 const Attachment = require("../../src/models/attachments");
 

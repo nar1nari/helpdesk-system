@@ -1,6 +1,6 @@
 const Request = require("../../src/models/requests");
 const User = require("../../src/models/users");
-const Category = require("../../src/models/categories");
+const Category = require("../../src/models/category");
 
 describe("Request model", () => {
     let user;
@@ -54,10 +54,10 @@ describe("Request model", () => {
         expect(await Request.get(-1)).toBeUndefined();
     });
 
-    test("set_status() updates request status", async () => {
+    test("setStatus() updates request status", async () => {
         const request = await createRequest();
 
-        const result = await Request.set_status(
+        const result = await Request.setStatus(
             request.id,
             Request.Status.IN_PROGRESS,
         );
@@ -68,18 +68,18 @@ describe("Request model", () => {
         );
     });
 
-    test("set_status() rejects invalid status", async () => {
+    test("setStatus() rejects invalid status", async () => {
         const request = await createRequest();
 
-        await expect(Request.set_status(request.id, "invalid")).rejects.toThrow(
+        await expect(Request.setStatus(request.id, "invalid")).rejects.toThrow(
             "Invalid status",
         );
     });
 
-    test("assign_operator() assigns an operator to a request", async () => {
+    test("assignOperator() assigns an operator to a request", async () => {
         const request = await createRequest();
 
-        const result = await Request.assign_operator(request.id, operator.id);
+        const result = await Request.assignOperator(request.id, operator.id);
 
         expect(result.assigned_operator_id).toBe(operator.id);
         expect((await Request.get(request.id)).assigned_operator_id).toBe(
@@ -122,8 +122,8 @@ describe("Request model", () => {
         const mine = await createRequest({ title: "Mine" });
         const foreign = await createRequest({ title: "Foreign" });
 
-        await Request.assign_operator(mine.id, operator.id);
-        await Request.assign_operator(foreign.id, otherOperator.id);
+        await Request.assignOperator(mine.id, operator.id);
+        await Request.assignOperator(foreign.id, otherOperator.id);
 
         const result = await Request.list({
             user: operator,
@@ -139,7 +139,7 @@ describe("Request model", () => {
         await createRequest();
         const request2 = await createRequest({ title: "Another request" });
 
-        await Request.set_status(request2.id, Request.Status.IN_PROGRESS);
+        await Request.setStatus(request2.id, Request.Status.IN_PROGRESS);
 
         const result = await listAsAdmin({
             status: Request.Status.IN_PROGRESS,
@@ -179,7 +179,7 @@ describe("Request model", () => {
         await createRequest();
         const request2 = await createRequest({ title: "Assigned request" });
 
-        await Request.assign_operator(request2.id, operator.id);
+        await Request.assignOperator(request2.id, operator.id);
 
         const result = await listAsAdmin({
             assigned_operator_id: operator.id,
