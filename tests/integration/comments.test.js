@@ -26,18 +26,18 @@ describe("Comments API", () => {
             "Test description",
         );
 
-    const sendComment = (token, request_id, message = "Test comment") =>
+    const sendComment = (token, request_id, content = "Test comment") =>
         request(app)
             .post(`/requests/${request_id}/comments`)
             .set(auth(token))
-            .send({ message });
+            .send({ content });
 
     const addComment = async (
         request_id,
         user_id,
-        message = "Test comment",
+        content = "Test comment",
     ) => {
-        return await Comment.create(request_id, user_id, message);
+        return await Comment.create(request_id, user_id, content);
     };
 
     describe("POST /requests/:id/comments", () => {
@@ -47,7 +47,7 @@ describe("Comments API", () => {
 
             const res = await request(app)
                 .post(`/requests/${created.id}/comments`)
-                .send({ message: "Test comment" });
+                .send({ content: "Test comment" });
 
             expect(res.status).toBe(401);
         });
@@ -90,7 +90,7 @@ describe("Comments API", () => {
 
                 const res = await sendComment(other.token, created.id);
 
-                expect(res.status).toBe(200);
+                expect(res.status).toBe(201);
             },
         );
 
@@ -103,7 +103,7 @@ describe("Comments API", () => {
                 .set(auth(alice.token));
 
             expect(res.status).toBe(400);
-            expect(res.body.error.message).toBe("Message is required");
+            expect(res.body.error.message).toBe("Validation failed");
         });
 
         test("uploads a comment to own request", async () => {
@@ -112,7 +112,7 @@ describe("Comments API", () => {
 
             const res = await sendComment(alice.token, created.id);
 
-            expect(res.status).toBe(200);
+            expect(res.status).toBe(201);
             expect(res.body.comment).toMatchObject({
                 id: expect.any(Number),
                 request_id: created.id,

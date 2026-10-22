@@ -25,6 +25,7 @@ const {
     status: statusSchema,
     assignOperator: assignOperatorSchema,
 } = require("../validators/requests");
+const { commentBody } = require("../validators/comments");
 const { canChangeStatus } = require("../policies/requestPolicy");
 
 const router = express.Router();
@@ -64,7 +65,7 @@ router.post(
 
 router.post(
     "/:id/comments",
-    validate({ params: idParams }),
+    validate({ params: idParams, body: commentBody }),
     loadRequest(),
     createComment,
 );

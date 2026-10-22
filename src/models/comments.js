@@ -13,7 +13,10 @@ const Comment = {
 
     async findBy(request_id) {
         const { rows } = await db.query(
-            `SELECT * FROM request_comments WHERE request_id = $1`,
+            `SELECT *
+             FROM request_comments
+             WHERE request_id = $1
+             ORDER BY created_at ASC, id ASC;`,
             [request_id],
         );
         return rows;

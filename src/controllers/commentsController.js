@@ -1,17 +1,16 @@
-const { badRequest } = require("../errors");
+const { conflict } = require("../errors");
 const Comment = require("../models/comments");
 
 exports.create = async (req, res) => {
-    if (!req.body?.message) {
-        throw badRequest("Message is required");
+    if (["closed", "rejected"].includes(req.request.status)) {
+        throw conflict("Request is closed");
     }
-
     const comment = await Comment.create(
         req.params.id,
         req.user.id,
-        req.body.message,
+        req.body.content,
     );
-    res.json({ comment: comment });
+    res.status(201).json({ comment: comment });
 };
 
 exports.get = async (req, res) => {
