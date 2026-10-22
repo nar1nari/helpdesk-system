@@ -388,7 +388,7 @@ describe("Requests API", () => {
                 .send({ status: Request.Status.IN_PROGRESS });
 
             expect(res.status).toBe(200);
-            expect(res.body.status).toBe(Request.Status.IN_PROGRESS);
+            expect(res.body.request.status).toBe(Request.Status.IN_PROGRESS);
             expect((await Request.get(created.id)).status).toBe(
                 Request.Status.IN_PROGRESS,
             );
@@ -421,7 +421,7 @@ describe("Requests API", () => {
                 .send({ status: "invalid" });
 
             expect(res.status).toBe(400);
-            expect(res.body.error.message).toBe("Invalid status");
+            expect(res.body.error.message).toBe("Validation failed");
         });
     });
 

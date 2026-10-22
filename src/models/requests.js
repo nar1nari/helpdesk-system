@@ -36,7 +36,7 @@ const Request = {
             throw badRequest("Invalid status", status);
         }
         const { rows } = await db.query(
-            "UPDATE requests SET status = $1 WHERE id = $2 RETURNING status",
+            "UPDATE requests SET status = $1 WHERE id = $2 RETURNING *",
             [status, request_id],
         );
         return rows[0];

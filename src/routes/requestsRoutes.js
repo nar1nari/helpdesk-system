@@ -21,6 +21,7 @@ const { idParams } = require("../validators/common");
 const {
     create: createSchema,
     list: listSchena,
+    status: statusSchema,
 } = require("../validators/requests");
 const { canChangeStatus } = require("../policies/requestPolicy");
 
@@ -34,7 +35,7 @@ router.post("/", validate({ body: createSchema }), create);
 router.get("/:id", validate({ params: idParams }), loadRequest(), get);
 router.patch(
     "/:id/status",
-    validate({ params: idParams }),
+    validate({ params: idParams, body: statusSchema }),
     loadRequest(canChangeStatus),
     set_status,
 );

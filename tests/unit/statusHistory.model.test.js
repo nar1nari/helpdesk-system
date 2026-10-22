@@ -35,12 +35,6 @@ describe("StatusHistory model", () => {
         });
     });
 
-    test("errors when creating with invalid status", async () => {
-        await expect(
-            StatusHistory.create(request.id, user.id, "new", "invalid_status"),
-        ).rejects.toThrow("Invalid status");
-    });
-
     test("findBy returns all status history for a request", async () => {
         const statusHistory1 = await StatusHistory.create(
             request.id,

@@ -2,6 +2,7 @@ const Request = require("../models/requests");
 const Category = require("../models/categories");
 const StatusHistory = require("../models/statusHistory");
 const { notFound, forbidden, badRequest } = require("../errors");
+const { assertCanTransition } = require("../policies/transitions");
 
 exports.create = async (req, res) => {
     if (!(await Category.findById(req.body.category_id)))
@@ -24,22 +25,21 @@ exports.get = async (req, res) => {
 };
 
 exports.set_status = async (req, res) => {
-    const request = await Request.get(req.params.id);
+    const old_status = req.request.status;
 
-    const old_status = request.status;
-    const new_status = (
-        await Request.set_status(req.params.id, req.body.status)
-    ).status;
+    assertCanTransition(req.user, req.request, req.body.status);
+
+    const updated = await Request.set_status(req.params.id, req.body.status);
 
     await StatusHistory.create(
         req.params.id,
         req.user.id,
         old_status,
-        new_status,
+        req.body.status,
     );
 
     res.json({
-        status: new_status,
+        request: updated,
     });
 };
 
