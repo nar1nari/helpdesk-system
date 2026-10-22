@@ -7,6 +7,7 @@ const schema = z.object({
     DATABASE_URL: z.string().min(1),
     JWT_SECRET: z.string().min(32, "must be at least 32 characters"),
     JWT_EXPIRES: z.string().default("1h"),
+    UPLOAD_DIR: z.string().min(1).default("uploads/attachments"),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -23,5 +24,6 @@ module.exports = {
     databaseUrl: env.DATABASE_URL,
     jwtSecret: env.JWT_SECRET,
     jwtExpires: env.JWT_EXPIRES,
+    uploadDir: env.UPLOAD_DIR,
     bcryptRounds: env.NODE_ENV === "test" ? 4 : 12,
 };

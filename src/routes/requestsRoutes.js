@@ -1,5 +1,4 @@
 const express = require("express");
-const multer = require("multer");
 const {
     create,
     get,
@@ -10,7 +9,9 @@ const {
 } = require("../controllers/requestsController");
 const {
     create: createAttachment,
+    listForRequest: listAttachments,
 } = require("../controllers/attachmentsController");
+const upload = require("../middlewares/upload");
 const {
     create: createComment,
     get: getComments,
@@ -30,8 +31,6 @@ const { canChangeStatus } = require("../policies/requestPolicy");
 
 const router = express.Router();
 router.use(authMiddleware);
-
-const upload = multer({ dest: "uploads/tmp" });
 
 router.get("/", validate({ query: listSchena }), list);
 router.post("/", validate({ body: createSchema }), create);
@@ -59,8 +58,14 @@ router.post(
     "/:id/attachments",
     validate({ params: idParams }),
     loadRequest(),
-    upload.single("file"),
+    upload,
     createAttachment,
+);
+router.get(
+    "/:id/attachments",
+    validate({ params: idParams }),
+    loadRequest(),
+    listAttachments,
 );
 
 router.post(

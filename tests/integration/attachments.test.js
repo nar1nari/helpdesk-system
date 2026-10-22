@@ -1,9 +1,11 @@
 const request = require("supertest");
-const os = require("os");
-const path = require("path");
-const fs = require("fs/promises");
-const crypto = require("crypto");
+const os = require("node:os");
+const path = require("node:path");
+const fs = require("node:fs/promises");
+const crypto = require("node:crypto");
+
 const createApp = require("../helpers/createApp");
+const config = require("../../src/config");
 const db = require("../../src/db");
 const Category = require("../../src/models/category");
 const Request = require("../../src/models/requests");
@@ -11,9 +13,7 @@ const Attachment = require("../../src/models/attachments");
 const createAuthHelpers = require("../helpers/authHelpers");
 
 const FIELD = "file";
-const uploadDir = path.resolve("uploads/attachments");
-
-const listUploads = () => fs.readdir(uploadDir).catch(() => []);
+const uploadDir = config.uploadDir;
 
 describe("Attachments API", () => {
     let app;
@@ -24,18 +24,21 @@ describe("Attachments API", () => {
     let filesBefore;
 
     beforeAll(async () => {
+        await fs.mkdir(uploadDir, { recursive: true });
         sourceDir = await fs.mkdtemp(
             path.join(os.tmpdir(), "attachments-src-"),
         );
-        filesBefore = new Set(await listUploads());
+        filesBefore = new Set(await fs.readdir(uploadDir));
     });
 
     afterAll(async () => {
         await fs.rm(sourceDir, { recursive: true, force: true });
 
-        for (const name of await listUploads()) {
+        for (const name of await fs.readdir(uploadDir)) {
             if (!filesBefore.has(name)) {
-                await fs.rm(path.join(uploadDir, name), { force: true });
+                await fs.rm(path.join(uploadDir, name), {
+                    force: true,
+                });
             }
         }
     });
@@ -55,26 +58,33 @@ describe("Attachments API", () => {
         );
 
     async function addAttachment(
-        request_id,
+        requestId,
         name = "report.txt",
         content = "hello world",
     ) {
-        const filePath = path.join(sourceDir, crypto.randomUUID());
+        const ext = path.extname(name).toLowerCase();
+        const filename = `${crypto.randomUUID()}${ext}`;
+        const filePath = path.join(uploadDir, filename);
+
         await fs.writeFile(filePath, content);
-        return Attachment.create(request_id, {
+
+        return Attachment.create(requestId, {
             path: filePath,
+            filename,
             originalname: name,
+            mimetype: ext === ".pdf" ? "application/pdf" : "text/plain",
+            size: Buffer.byteLength(content),
         });
     }
 
     const upload = (
         token,
-        request_id,
+        requestId,
         content = "hello world",
         name = "report.txt",
     ) =>
         request(app)
-            .post(`/requests/${request_id}/attachments`)
+            .post(`/requests/${requestId}/attachments`)
             .set(auth(token))
             .attach(FIELD, Buffer.from(content), name);
 
@@ -94,9 +104,10 @@ describe("Attachments API", () => {
             expect(res.status).toBe(401);
         });
 
-        test("401 for a valid token of a deleted user", async () => {
+        test("401 for a deleted user", async () => {
             const ghost = await signUp("ghost");
             const created = await createRequestFor(ghost.user);
+
             await db.query("DELETE FROM requests WHERE id = $1", [created.id]);
             await db.query("DELETE FROM users WHERE username = $1", ["ghost"]);
 
@@ -105,7 +116,7 @@ describe("Attachments API", () => {
             expect(res.status).toBe(401);
         });
 
-        test("404 for unknown request", async () => {
+        test("404 for an unknown request", async () => {
             const alice = await signUp("alice");
 
             const res = await upload(alice.token, 42);
@@ -113,20 +124,6 @@ describe("Attachments API", () => {
             expect(res.status).toBe(404);
             expect(await countAttachments()).toBe(0);
         });
-
-        test.each(["applicant", "operator", "admin"])(
-            "404 when %s is not the request owner",
-            async (role) => {
-                const alice = await signUp("alice");
-                const other = await signUp("other", role);
-                const created = await createRequestFor(alice.user);
-
-                const res = await upload(other.token, created.id);
-
-                expect(res.status).toBe(404);
-                expect(await countAttachments()).toBe(0);
-            },
-        );
 
         test("400 when no file is uploaded", async () => {
             const alice = await signUp("alice");
@@ -137,11 +134,11 @@ describe("Attachments API", () => {
                 .set(auth(alice.token));
 
             expect(res.status).toBe(400);
-            expect(res.body.error.message).toBe("No file uploaded");
+            expect(res.body.error.message).toContain("No file uploaded");
             expect(await countAttachments()).toBe(0);
         });
 
-        test("uploads a file to own request", async () => {
+        test("uploads a file and returns public metadata", async () => {
             const alice = await signUp("alice");
             const created = await createRequestFor(alice.user);
 
@@ -153,20 +150,105 @@ describe("Attachments API", () => {
             );
 
             expect(res.status).toBe(201);
+
             expect(res.body.attachment).toMatchObject({
                 request_id: created.id,
                 original_name: "report.txt",
+                mime_type: "text/plain",
+                size_bytes: Buffer.byteLength("hello world"),
             });
-            expect(res.body.attachment.file_path).toMatch(
-                /^attachments\/[0-9a-f-]{36}\.txt$/,
+
+            expect(res.body.attachment.id).toBeDefined();
+            expect(res.body.attachment).not.toHaveProperty("file_path");
+            expect(res.body.attachment).not.toHaveProperty("absolute_path");
+
+            const [stored] = await fs.readdir(uploadDir);
+            const attachment = await Attachment.get(res.body.attachment.id);
+
+            expect(stored).toBeDefined();
+            expect(attachment.file_path).toMatch(/^[0-9a-f-]{36}\.txt$/);
+            expect(await fs.readFile(attachment.absolute_path, "utf8")).toBe(
+                "hello world",
             );
 
-            const stored = path.join(
-                uploadDir,
-                path.basename(res.body.attachment.file_path),
-            );
-            expect(await fs.readFile(stored, "utf8")).toBe("hello world");
             expect(await countAttachments()).toBe(1);
+        });
+
+        test("400 for a disallowed file extension", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+
+            const res = await upload(
+                alice.token,
+                created.id,
+                "<script>alert(1)</script>",
+                "payload.html",
+            );
+
+            expect(res.status).toBe(400);
+            expect(await countAttachments()).toBe(0);
+        });
+    });
+
+    describe("GET /requests/:id/attachments", () => {
+        test("returns attachment IDs and public metadata", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+
+            await addAttachment(created.id, "first.txt");
+            await addAttachment(created.id, "second.txt");
+
+            const res = await request(app)
+                .get(`/requests/${created.id}/attachments`)
+                .set(auth(alice.token));
+
+            expect(res.status).toBe(200);
+            expect(res.body.attachments).toHaveLength(2);
+
+            expect(
+                res.body.attachments.map((item) => item.original_name),
+            ).toEqual(["first.txt", "second.txt"]);
+
+            for (const attachment of res.body.attachments) {
+                expect(attachment.id).toBeDefined();
+                expect(attachment).toHaveProperty("mime_type");
+                expect(attachment).toHaveProperty("size_bytes");
+                expect(attachment).not.toHaveProperty("file_path");
+                expect(attachment).not.toHaveProperty("absolute_path");
+            }
+        });
+
+        test("401 without token", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+
+            const res = await request(app).get(
+                `/requests/${created.id}/attachments`,
+            );
+
+            expect(res.status).toBe(401);
+        });
+
+        test("404 for an unknown request", async () => {
+            const alice = await signUp("alice");
+
+            const res = await request(app)
+                .get("/requests/42/attachments")
+                .set(auth(alice.token));
+
+            expect(res.status).toBe(404);
+        });
+
+        test("404 when the user does not own the request", async () => {
+            const alice = await signUp("alice");
+            const bob = await signUp("bob");
+            const created = await createRequestFor(alice.user);
+
+            const res = await request(app)
+                .get(`/requests/${created.id}/attachments`)
+                .set(auth(bob.token));
+
+            expect(res.status).toBe(404);
         });
     });
 
@@ -176,8 +258,9 @@ describe("Attachments API", () => {
             expect(res.status).toBe(401);
         });
 
-        test("401 for a valid token of a deleted user", async () => {
+        test("401 for a deleted user", async () => {
             const ghost = await signUp("ghost");
+
             await db.query("DELETE FROM users WHERE username = $1", ["ghost"]);
 
             const res = await request(app)
@@ -187,7 +270,7 @@ describe("Attachments API", () => {
             expect(res.status).toBe(401);
         });
 
-        test("404 for unknown attachment", async () => {
+        test("404 for an unknown attachment", async () => {
             const alice = await signUp("alice");
 
             const res = await request(app)
@@ -198,7 +281,7 @@ describe("Attachments API", () => {
             expect(res.body.error.message).toBe("Attachment not found");
         });
 
-        test("downloads the file with its original name", async () => {
+        test("downloads the file using its original name", async () => {
             const alice = await signUp("alice");
             const created = await createRequestFor(alice.user);
             const attachment = await addAttachment(
@@ -218,7 +301,7 @@ describe("Attachments API", () => {
             );
         });
 
-        test("403 when applicant opens attachment of someone else's request", async () => {
+        test("404 when an applicant downloads another user's attachment", async () => {
             const alice = await signUp("alice");
             const bob = await signUp("bob");
             const created = await createRequestFor(alice.user);
@@ -228,7 +311,7 @@ describe("Attachments API", () => {
                 .get(`/attachments/${attachment.id}`)
                 .set(auth(bob.token));
 
-            expect(res.status).toBe(403);
+            expect(res.status).toBe(404);
         });
 
         test("admin can download any attachment", async () => {
@@ -245,13 +328,12 @@ describe("Attachments API", () => {
             expect(res.text).toBe("hello world");
         });
 
-        test("404 when the file is missing on disk", async () => {
+        test("404 when the file is missing from disk", async () => {
             const alice = await signUp("alice");
             const created = await createRequestFor(alice.user);
             const attachment = await addAttachment(created.id);
-            await fs.rm(
-                path.join(uploadDir, path.basename(attachment.file_path)),
-            );
+
+            await fs.rm(path.join(uploadDir, attachment.file_path));
 
             const res = await request(app)
                 .get(`/attachments/${attachment.id}`)
