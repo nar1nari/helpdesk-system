@@ -66,9 +66,8 @@ describe("User model", () => {
         await User.create("alice", "secret123");
         await User.create("bob", "secret123");
 
-        const user = await User.all();
-        expect(user).toBeDefined();
-        expect(user.username).toBe("alice");
+        const users = await User.all();
+        expect(users.map((u) => u.username)).toEqual(["alice", "bob"]);
     });
 
     test("delete() removes the user", async () => {

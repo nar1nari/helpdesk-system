@@ -2,6 +2,8 @@ const Request = require("../models/requests");
 const Category = require("../models/category");
 const StatusHistory = require("../models/statusHistory");
 const { forbidden, badRequest } = require("../errors");
+const User = require("../models/users");
+const { canAssign } = require("../policies/requestPolicy");
 const { assertCanTransition } = require("../policies/transitions");
 
 exports.create = async (req, res) => {
@@ -73,14 +75,13 @@ exports.list = async (req, res) => {
 };
 
 exports.assignOperator = async (req, res) => {
-    const allowed =
-        req.user.role === "admin" ||
-        (req.user.role === "operator" &&
-            req.request.assigned_operator_id === null &&
-            req.body.operator_id === req.user.id);
-
-    if (!allowed) {
+    if (!canAssign(req.user, req.request, req.body.operator_id)) {
         throw forbidden();
+    }
+
+    const operator = await User.findById(req.body.operator_id);
+    if (!operator || !operator.is_active || operator.role === "applicant") {
+        throw badRequest("operator_id must be an active operator or admin");
     }
 
     res.json({

@@ -180,4 +180,34 @@ describe("Comments API", () => {
             expect(res.text).toEqual(JSON.stringify({ comments: [comment] }));
         });
     });
+
+    describe("comments on finished requests", () => {
+        test.each(["closed", "rejected"])(
+            "409 when the request is %s",
+            async (status) => {
+                const alice = await signUp("alice");
+                const created = await createRequestFor(alice.user);
+                await db.query("UPDATE requests SET status = $1", [status]);
+
+                const res = await sendComment(alice.token, created.id);
+
+                expect(res.status).toBe(409);
+                expect(res.body.error.message).toBe("Request is closed");
+            },
+        );
+
+        test("comments are still readable on a closed request", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+            await addComment(created.id, alice.user.id);
+            await db.query("UPDATE requests SET status = 'closed'");
+
+            const res = await request(app)
+                .get(`/requests/${created.id}/comments`)
+                .set(auth(alice.token));
+
+            expect(res.status).toBe(200);
+            expect(res.body.comments).toHaveLength(1);
+        });
+    });
 });

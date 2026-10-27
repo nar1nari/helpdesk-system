@@ -305,4 +305,45 @@ describe("Request model", () => {
         expect(result.requests).toHaveLength(0);
         expect(result.pagination.total).toBe(1);
     });
+
+    test("list() throws for an unknown user role", async () => {
+        await expect(
+            Request.list({ user: { id: 1, role: "guest" } }),
+        ).rejects.toThrow("Invalid user role");
+    });
+
+    test("list() uses default sorting when sort_by is unknown", async () => {
+        await createRequest({ title: "First" });
+        await createRequest({ title: "Second" });
+
+        const result = await listAsAdmin({ sort_by: "password" });
+
+        expect(result.requests.map((r) => r.title)).toEqual([
+            "Second",
+            "First",
+        ]);
+    });
+
+    test("list() sorts ascending when asked", async () => {
+        await createRequest({ title: "First" });
+        await createRequest({ title: "Second" });
+
+        const result = await listAsAdmin({ sort_by: "id", sort_order: "asc" });
+
+        expect(result.requests.map((r) => r.title)).toEqual([
+            "First",
+            "Second",
+        ]);
+    });
+
+    test("list() works without any arguments except the user", async () => {
+        const result = await listAsAdmin();
+        expect(result.requests).toEqual([]);
+        expect(result.pagination).toEqual({
+            page: 1,
+            limit: 20,
+            total: 0,
+            totalPages: 0,
+        });
+    });
 });

@@ -22,7 +22,7 @@ const validate = require("../middlewares/validate");
 const { idParams } = require("../validators/common");
 const {
     create: createSchema,
-    list: listSchena,
+    list: listSchema,
     status: statusSchema,
     assignOperator: assignOperatorSchema,
 } = require("../validators/requests");
@@ -32,7 +32,7 @@ const { canChangeStatus } = require("../policies/requestPolicy");
 const router = express.Router();
 router.use(authMiddleware);
 
-router.get("/", validate({ query: listSchena }), list);
+router.get("/", validate({ query: listSchema }), list);
 router.post("/", validate({ body: createSchema }), create);
 router.get("/:id", validate({ params: idParams }), loadRequest(), get);
 router.patch(
@@ -42,7 +42,7 @@ router.patch(
     setStatus,
 );
 router.get(
-    "/requests/:id/status",
+    "/:id/status",
     validate({ params: idParams }),
     loadRequest(),
     getStatusHistory,

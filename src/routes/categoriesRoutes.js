@@ -30,7 +30,7 @@ router.patch(
 router.delete(
     "/:id",
     requireRole("admin"),
-    validate({ params: idParams, body: createCategory }),
+    validate({ params: idParams }),
     remove,
 );
 

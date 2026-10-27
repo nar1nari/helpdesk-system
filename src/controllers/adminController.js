@@ -1,5 +1,6 @@
 const { createUser } = require("../services/userService");
 const User = require("../models/users");
+const { notFound } = require("../errors");
 
 exports.createUser = async (req, res) => {
     let user = await createUser(req.body);
@@ -12,9 +13,10 @@ exports.listUsers = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
     let user = await User.findById(req.params.id);
-    if (req.body.role)
+    if (!user) throw notFound("User not found");
+    if (req.body.role !== undefined)
         user = await User.changeRole(req.params.id, req.body.role);
-    if (req.body.isActive)
+    if (req.body.isActive !== undefined)
         user = await User.changeActive(req.params.id, req.body.isActive);
     res.json({ user: user });
 };

@@ -564,6 +564,287 @@ describe("Requests API", () => {
         });
     });
 
+    describe("POST /requests (extra checks)", () => {
+        test("400 when the category does not exist", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .post("/requests")
+                .set(auth(alice.token))
+                .send({
+                    category_id: 99999,
+                    title: "Title",
+                    description: "Text",
+                });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toBe("Unknown category_id");
+        });
+
+        test("accepts a description of 5000 characters", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .post("/requests")
+                .set(auth(alice.token))
+                .send({
+                    category_id: category.id,
+                    title: "Title",
+                    description: "a".repeat(5000),
+                });
+            expect(res.status).toBe(201);
+        });
+
+        test("400 (not 500) when the description is longer than 5000", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .post("/requests")
+                .set(auth(alice.token))
+                .send({
+                    category_id: category.id,
+                    title: "Title",
+                    description: "a".repeat(5001),
+                });
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toBe("Validation failed");
+        });
+    });
+
+    describe("GET /requests (more filters)", () => {
+        test("filters by category_id", async () => {
+            const alice = await signUp("alice");
+            const other = await Category.add("category2");
+            await createRequest(alice.token);
+            await createRequest(alice.token, { category_id: other.id });
+
+            const res = await request(app)
+                .get(`/requests?category_id=${other.id}`)
+                .set(auth(alice.token));
+
+            expect(res.body.requests).toHaveLength(1);
+            expect(res.body.requests[0].category_name).toBe("category2");
+        });
+
+        test("filters by assigned_operator_id", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const operator = await signUp("operator", "operator");
+            const first = await createRequest(alice.token);
+            await createRequest(alice.token);
+            await Request.assignOperator(first.id, operator.user.id);
+
+            const res = await request(app)
+                .get(`/requests?assigned_operator_id=${operator.user.id}`)
+                .set(auth(admin.token));
+
+            expect(res.body.requests.map((r) => r.id)).toEqual([first.id]);
+        });
+
+        test("filters by search text in the description", async () => {
+            const alice = await signUp("alice");
+            await createRequest(alice.token, { description: "printer broken" });
+            await createRequest(alice.token, { description: "no network" });
+
+            const res = await request(app)
+                .get("/requests?search=printer")
+                .set(auth(alice.token));
+
+            expect(res.body.requests).toHaveLength(1);
+        });
+
+        test("search treats % as a normal character", async () => {
+            const alice = await signUp("alice");
+            await createRequest(alice.token, { title: "100% broken" });
+            await createRequest(alice.token, { title: "other" });
+
+            const res = await request(app)
+                .get("/requests?search=%25")
+                .set(auth(alice.token));
+
+            expect(res.body.requests).toHaveLength(1);
+            expect(res.body.requests[0].title).toBe("100% broken");
+        });
+
+        test("filters by date_from and date_to", async () => {
+            const alice = await signUp("alice");
+            const old = await createRequest(alice.token);
+            const recent = await createRequest(alice.token);
+            await db.query(
+                "UPDATE requests SET created_at = '2020-01-15 12:00+00' WHERE id = $1",
+                [old.id],
+            );
+
+            const onlyOld = await request(app)
+                .get("/requests?date_from=2020-01-01&date_to=2020-01-31")
+                .set(auth(alice.token));
+            expect(onlyOld.body.requests.map((r) => r.id)).toEqual([old.id]);
+
+            const onlyRecent = await request(app)
+                .get("/requests?date_from=2021-01-01")
+                .set(auth(alice.token));
+            expect(onlyRecent.body.requests.map((r) => r.id)).toEqual([
+                recent.id,
+            ]);
+        });
+
+        test("400 for a date in the wrong format", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .get("/requests?date_from=01-02-2020")
+                .set(auth(alice.token));
+            expect(res.status).toBe(400);
+        });
+
+        test("400 (not 500) for a date that does not exist", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .get("/requests?date_from=2024-02-31")
+                .set(auth(alice.token));
+            expect(res.status).toBe(400);
+        });
+
+        test("400 for an unknown status filter", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .get("/requests?status=weird")
+                .set(auth(alice.token));
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe("PATCH /requests/:id/status (transitions)", () => {
+        const setStatus = (token, id, status) =>
+            request(app)
+                .patch(`/requests/${id}/status`)
+                .set(auth(token))
+                .send({ status });
+
+        test("409 for a transition that is not allowed", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const created = await createRequest(alice.token);
+
+            const res = await setStatus(admin.token, created.id, "closed");
+
+            expect(res.status).toBe(409);
+            expect(res.body.error.message).toBe(
+                "Cannot change status from new to closed",
+            );
+        });
+
+        test("saves a status history record", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const created = await createRequest(alice.token);
+
+            await setStatus(admin.token, created.id, "in_progress");
+
+            const res = await request(app)
+                .get(`/requests/${created.id}/status`)
+                .set(auth(admin.token));
+            expect(res.status).toBe(200);
+            expect(res.body.status_history).toHaveLength(1);
+            expect(res.body.status_history[0]).toMatchObject({
+                request_id: created.id,
+                changed_by: admin.user.id,
+                old_status: "new",
+                new_status: "in_progress",
+            });
+        });
+
+        test("applicant can close a resolved request", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequest(alice.token);
+            await db.query("UPDATE requests SET status = 'resolved'");
+
+            const res = await setStatus(alice.token, created.id, "closed");
+
+            expect(res.status).toBe(200);
+            expect(res.body.request.status).toBe("closed");
+        });
+
+        test("403 when the role is not allowed to make this transition", async () => {
+            const alice = await signUp("alice");
+            const operator = await signUp("operator", "operator");
+            const created = await createRequest(alice.token);
+            await Request.assignOperator(created.id, operator.user.id);
+            await db.query("UPDATE requests SET status = 'resolved'");
+
+            // only the applicant or an admin may close a resolved request
+            const res = await setStatus(operator.token, created.id, "closed");
+
+            expect(res.status).toBe(403);
+        });
+    });
+
+    describe("GET /requests/:id/status", () => {
+        test("401 without token", async () => {
+            const res = await request(app).get("/requests/1/status");
+            expect(res.status).toBe(401);
+        });
+
+        test("404 for an unknown request", async () => {
+            const alice = await signUp("alice");
+            const res = await request(app)
+                .get("/requests/99999/status")
+                .set(auth(alice.token));
+            expect(res.status).toBe(404);
+        });
+
+        test("returns an empty history for a new request", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequest(alice.token);
+            const res = await request(app)
+                .get(`/requests/${created.id}/status`)
+                .set(auth(alice.token));
+            expect(res.status).toBe(200);
+            expect(res.body).toEqual({ status_history: [] });
+        });
+
+        test("404 when applicant opens someone else's history", async () => {
+            const alice = await signUp("alice");
+            const bob = await signUp("bob");
+            const created = await createRequest(alice.token);
+            const res = await request(app)
+                .get(`/requests/${created.id}/status`)
+                .set(auth(bob.token));
+            expect(res.status).toBe(404);
+        });
+    });
+
+    describe("PATCH /requests/:id/assign (operator checks)", () => {
+        const assign = (token, id, operator_id) =>
+            request(app)
+                .patch(`/requests/${id}/assign`)
+                .set(auth(token))
+                .send({ operator_id });
+
+        test("400 when operator_id does not exist", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const created = await createRequest(alice.token);
+            const res = await assign(admin.token, created.id, 99999);
+            expect(res.status).toBe(400);
+        });
+
+        test("400 when operator_id belongs to an applicant", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const created = await createRequest(alice.token);
+            const res = await assign(admin.token, created.id, alice.user.id);
+            expect(res.status).toBe(400);
+        });
+
+        test("400 when the operator is deactivated", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const operator = await signUp("operator", "operator");
+            await db.query("UPDATE users SET is_active = false WHERE id = $1", [
+                operator.user.id,
+            ]);
+            const created = await createRequest(alice.token);
+            const res = await assign(admin.token, created.id, operator.user.id);
+            expect(res.status).toBe(400);
+        });
+    });
+
     describe("valid token of a deleted user", () => {
         test.each([
             ["post", "/requests"],

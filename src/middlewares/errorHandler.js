@@ -1,8 +1,11 @@
 const PG_ERRORS = {
     "22P02": [400, "Invalid value"],
     22003: [400, "Number out of range"],
+    22007: [400, "Invalid date"],
+    22008: [400, "Invalid date"],
     22001: [400, "Value too long"],
     23502: [400, "Missing required value"],
+    23001: [409, "Referenced record does not exist or is still in use"],
     23503: [409, "Referenced record does not exist or is still in use"],
     23505: [409, "Already exists"],
     23514: [400, "Value not allowed"],

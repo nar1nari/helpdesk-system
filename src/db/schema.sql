@@ -57,12 +57,13 @@ CREATE TABLE IF NOT EXISTS request_status_history (
     changed_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE FUNCTION set_updated_at() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
 BEGIN
     NEW.updated_at = now();
     RETURN NEW;
 END $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS requests_set_updated_at ON requests;
 CREATE TRIGGER requests_set_updated_at
     BEFORE UPDATE ON requests
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();

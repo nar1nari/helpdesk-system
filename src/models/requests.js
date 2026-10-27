@@ -62,7 +62,7 @@ const Request = {
         page = 1,
         limit = 20,
         user,
-    } = {}) {
+    }) {
         const col = SORT_FIELDS[sort_by] ?? SORT_FIELDS.created_at;
         const dir = sort_order === "asc" ? "ASC" : "DESC";
 

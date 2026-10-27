@@ -5,7 +5,7 @@ const Status = require("../models/status");
 exports.create = z.object({
     category_id: id,
     title: z.string().trim().min(1).max(255),
-    description: z.string().trim().min(1).max(10000),
+    description: z.string().trim().min(1).max(5000),
 });
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "use YYYY-MM-DD");

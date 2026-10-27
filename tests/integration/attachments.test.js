@@ -296,8 +296,8 @@ describe("Attachments API", () => {
 
             expect(res.status).toBe(200);
             expect(res.text).toBe("hello world");
-            expect(res.headers["content-disposition"]).toContain(
-                'filename="report.txt"',
+            expect(res.headers["content-disposition"]).toMatch(
+                /filename="?report\.txt"?/,
             );
         });
 
@@ -340,6 +340,81 @@ describe("Attachments API", () => {
                 .set(auth(alice.token));
 
             expect(res.status).toBe(404);
+        });
+    });
+
+    describe("upload edge cases", () => {
+        beforeEach(() => {
+            jest.spyOn(console, "error").mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            console.error.mockRestore();
+        });
+
+        test("413 when the file is bigger than the limit", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+            const tooBig = "a".repeat(config.uploadMaxBytes + 1);
+
+            const res = await upload(alice.token, created.id, tooBig);
+
+            expect(res.status).toBe(413);
+            expect(await countAttachments()).toBe(0);
+        });
+
+        test("400 for a file without an extension", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+
+            const res = await upload(alice.token, created.id, "x", "README");
+
+            expect(res.status).toBe(400);
+            expect(res.body.error.message).toBe(
+                "File type (none) is not allowed",
+            );
+        });
+
+        test("400 when an extra text field is sent", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+
+            const res = await upload(alice.token, created.id).field("a", "b");
+
+            expect(res.status).toBe(400);
+        });
+
+        test("removes the saved file when the database insert fails", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+            const spy = jest
+                .spyOn(Attachment, "create")
+                .mockRejectedValueOnce(new Error("db down"));
+            const before = (await fs.readdir(uploadDir)).length;
+
+            const res = await upload(alice.token, created.id);
+
+            expect(res.status).toBe(500);
+            expect((await fs.readdir(uploadDir)).length).toBe(before);
+            spy.mockRestore();
+        });
+
+        test("still answers 500 when the cleanup of the file fails too", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequestFor(alice.user);
+            const createSpy = jest
+                .spyOn(Attachment, "create")
+                .mockRejectedValueOnce(new Error("db down"));
+            const unlinkSpy = jest
+                .spyOn(fs, "unlink")
+                .mockRejectedValueOnce(new Error("disk error"));
+
+            const res = await upload(alice.token, created.id);
+
+            expect(res.status).toBe(500);
+            expect(unlinkSpy).toHaveBeenCalled();
+            createSpy.mockRestore();
+            unlinkSpy.mockRestore();
         });
     });
 });

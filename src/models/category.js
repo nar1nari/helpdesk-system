@@ -25,7 +25,8 @@ const Category = {
         const { rows } = await db.query(
             `UPDATE categories
              SET name = $1
-             WHERE id = $2`,
+             WHERE id = $2
+             RETURNING id, name`,
             [name, id],
         );
         return rows[0];
@@ -48,7 +49,7 @@ const Category = {
     },
 
     async all() {
-        const { rows } = await db.query("SELECT * FROM categories");
+        const { rows } = await db.query("SELECT * FROM categories ORDER BY id");
         return rows;
     },
 };

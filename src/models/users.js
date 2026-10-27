@@ -53,9 +53,9 @@ const User = {
 
     async all() {
         const { rows } = await db.query(
-            "SELECT id, username, role, is_active, created_at FROM users",
+            "SELECT id, username, role, is_active, created_at FROM users ORDER BY id",
         );
-        return rows[0];
+        return rows;
     },
 
     async delete(username) {
