@@ -2,6 +2,7 @@ const RequestModel = require("../models/requests");
 const Category = require("../models/category");
 const StatusHistory = require("../models/statusHistory");
 const { forbidden, badRequest } = require("../errors");
+const serialize = require("../serializers");
 const User = require("../models/users");
 const { canAssign } = require("../policies/requestPolicy");
 const { assertCanTransition } = require("../policies/transitions");
@@ -11,17 +12,19 @@ exports.create = async (req, res) => {
         throw badRequest("Unknown category_id");
 
     res.status(201).json({
-        request: await RequestModel.create(
-            req.user.id,
-            req.body.category_id,
-            req.body.title,
-            req.body.description,
+        request: serialize.request(
+            await RequestModel.create(
+                req.user.id,
+                req.body.category_id,
+                req.body.title,
+                req.body.description,
+            ),
         ),
     });
 };
 
 exports.get = async (req, res) => {
-    res.json({ request: req.request });
+    res.json({ request: serialize.request(req.request) });
 };
 
 exports.setStatus = async (req, res) => {
@@ -42,7 +45,7 @@ exports.setStatus = async (req, res) => {
     );
 
     res.json({
-        request: updated,
+        request: serialize.request(updated),
     });
 };
 
@@ -74,7 +77,7 @@ exports.list = async (req, res) => {
         user: req.user,
     });
 
-    res.json(result);
+    res.json({ ...result, requests: result.requests.map(serialize.request) });
 };
 
 exports.assignOperator = async (req, res) => {
@@ -88,9 +91,11 @@ exports.assignOperator = async (req, res) => {
     }
 
     res.json({
-        request: await RequestModel.assignOperator(
-            req.params.id,
-            req.body.operator_id,
+        request: serialize.request(
+            await RequestModel.assignOperator(
+                req.params.id,
+                req.body.operator_id,
+            ),
         ),
     });
 };

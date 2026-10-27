@@ -54,14 +54,17 @@ describe("Requests API", () => {
 
             expect(res.status).toBe(201);
             expect(res.body.request).toMatchObject({
-                user_id: user.id,
-                category_id: category.id,
+                id: expect.any(Number),
+                user: { id: user.id, username: "alice" },
+                category: { id: category.id, name: "category1" },
                 title: "Printer is broken",
                 description: "It does not print",
                 status: RequestModel.Status.NEW,
-                assigned_operator_id: null,
+                assigned_operator: null,
             });
-            expect(res.body.request.id).toBeDefined();
+            expect(res.body.request).not.toHaveProperty("user_id");
+            expect(res.body.request).not.toHaveProperty("category_id");
+            expect(res.body.request).not.toHaveProperty("assigned_operator_id");
         });
 
         test("400 when required fields are missing", async () => {
@@ -489,9 +492,10 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(200);
-            expect(res.body.request.assigned_operator_id).toEqual(
-                operator.user.id,
-            );
+            expect(res.body.request.assigned_operator).toEqual({
+                id: operator.user.id,
+                username: "operator",
+            });
             expect(
                 (await RequestModel.get(created.id)).assigned_operator_id,
             ).toBe(operator.user.id);
@@ -612,6 +616,78 @@ describe("Requests API", () => {
         });
     });
 
+    describe("nested objects in responses", () => {
+        test("GET /requests/:id returns user, category and assigned_operator", async () => {
+            const alice = await signUp("alice");
+            const operator = await signUp("operator", "operator");
+            const created = await createRequest(alice.token);
+            await RequestModel.assignOperator(created.id, operator.user.id);
+
+            const res = await request(app)
+                .get(`/requests/${created.id}`)
+                .set(auth(alice.token));
+
+            expect(res.body.request.user).toEqual({
+                id: alice.user.id,
+                username: "alice",
+            });
+            expect(res.body.request.category).toEqual({
+                id: category.id,
+                name: "category1",
+            });
+            expect(res.body.request.assigned_operator).toEqual({
+                id: operator.user.id,
+                username: "operator",
+            });
+        });
+
+        test("nested user never contains the password", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequest(alice.token);
+            const res = await request(app)
+                .get(`/requests/${created.id}`)
+                .set(auth(alice.token));
+            expect(Object.keys(res.body.request.user).sort()).toEqual([
+                "id",
+                "username",
+            ]);
+        });
+
+        test("assigned_operator is null for an unassigned request", async () => {
+            const alice = await signUp("alice");
+            const created = await createRequest(alice.token);
+            const res = await request(app)
+                .get(`/requests/${created.id}`)
+                .set(auth(alice.token));
+            expect(res.body.request.assigned_operator).toBeNull();
+        });
+
+        test("GET /requests returns nested objects for every item", async () => {
+            const alice = await signUp("alice");
+            await createRequest(alice.token);
+            const res = await request(app)
+                .get("/requests")
+                .set(auth(alice.token));
+            const item = res.body.requests[0];
+            expect(item.user.id).toBe(alice.user.id);
+            expect(item.category.id).toBe(category.id);
+            expect(item).not.toHaveProperty("user_id");
+            expect(item).not.toHaveProperty("category_name");
+        });
+
+        test("status change returns the request with nested objects", async () => {
+            const alice = await signUp("alice");
+            const admin = await signUp("admin", "admin");
+            const created = await createRequest(alice.token);
+            const res = await request(app)
+                .patch(`/requests/${created.id}/status`)
+                .set(auth(admin.token))
+                .send({ status: "in_progress" });
+            expect(res.body.request.user.username).toBe("alice");
+            expect(res.body.request.category.name).toBe("category1");
+        });
+    });
+
     describe("GET /requests (more filters)", () => {
         test("filters by category_id", async () => {
             const alice = await signUp("alice");
@@ -624,7 +700,10 @@ describe("Requests API", () => {
                 .set(auth(alice.token));
 
             expect(res.body.requests).toHaveLength(1);
-            expect(res.body.requests[0].category_name).toBe("category2");
+            expect(res.body.requests[0].category).toEqual({
+                id: other.id,
+                name: "category2",
+            });
         });
 
         test("filters by assigned_operator_id", async () => {
@@ -748,7 +827,7 @@ describe("Requests API", () => {
             expect(res.body.status_history).toHaveLength(1);
             expect(res.body.status_history[0]).toMatchObject({
                 request_id: created.id,
-                changed_by: admin.user.id,
+                changed_by: { id: admin.user.id, username: "admin" },
                 old_status: "new",
                 new_status: "in_progress",
             });

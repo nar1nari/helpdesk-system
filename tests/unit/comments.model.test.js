@@ -27,7 +27,7 @@ describe("Comments model", () => {
         expect(comment).toMatchObject({
             id: expect.any(Number),
             request_id: request.id,
-            author_id: user.id,
+            author: { id: user.id, username: user.username },
             content: "Test comment",
             created_at: expect.any(Date),
         });
@@ -47,6 +47,27 @@ describe("Comments model", () => {
         expect(await Comment.findBy(request.id)).toEqual([comment1, comment2]);
     });
 
+    test("create() returns the comment with a nested author", async () => {
+        const comment = await Comment.create(request.id, user.id, "Hi");
+        expect(comment).toEqual({
+            id: expect.any(Number),
+            request_id: request.id,
+            content: "Hi",
+            created_at: expect.any(Date),
+            author: { id: user.id, username: user.username },
+        });
+    });
+
+    test("findBy() returns comments with a nested author", async () => {
+        await Comment.create(request.id, user.id, "Hi");
+        const [comment] = await Comment.findBy(request.id);
+        expect(comment.author).toEqual({
+            id: user.id,
+            username: user.username,
+        });
+        expect(comment).not.toHaveProperty("author_id");
+    });
+
     test("findBy() returns empty array if no comments", async () => {
         expect(await Comment.findBy(request.id)).toEqual([]);
     });
@@ -60,6 +81,7 @@ describe("Comments model", () => {
         const deleted = await Comment.delete(comment.id);
 
         expect(await Comment.findBy(request.id)).toEqual([]);
-        expect(deleted).toEqual(comment);
+        expect(deleted.id).toBe(comment.id);
+        expect(deleted.content).toBe("Test comment");
     });
 });

@@ -48,9 +48,19 @@ describe("StatusHistory model", () => {
             "in_progress",
             "pending",
         );
-        expect(await StatusHistory.getBy(request.id)).toEqual([
-            statusHistory2,
-            statusHistory1,
+        const history = await StatusHistory.getBy(request.id);
+        expect(history.map((h) => h.id)).toEqual([
+            statusHistory2.id,
+            statusHistory1.id,
         ]);
+    });
+
+    test("getBy returns changed_by as a nested user", async () => {
+        await StatusHistory.create(request.id, user.id, "new", "in_progress");
+        const [entry] = await StatusHistory.getBy(request.id);
+        expect(entry.changed_by).toEqual({
+            id: user.id,
+            username: user.username,
+        });
     });
 });

@@ -10,6 +10,18 @@ const SORT_FIELDS = Object.freeze({
     updated_at: "r.updated_at",
 });
 
+const SELECT_REQUEST = `
+    SELECT r.*,
+           json_build_object('id', u.id, 'username', u.username) AS "user",
+           json_build_object('id', c.id, 'name', c.name) AS category,
+           CASE WHEN o.id IS NULL THEN NULL
+                ELSE json_build_object('id', o.id, 'username', o.username)
+           END AS assigned_operator
+    FROM requests r
+    JOIN users u ON u.id = r.user_id
+    JOIN categories c ON c.id = r.category_id
+    LEFT JOIN users o ON o.id = r.assigned_operator_id`;
+
 const RequestModel = {
     Status,
 
@@ -17,37 +29,36 @@ const RequestModel = {
         const { rows } = await db.query(
             `INSERT INTO requests (user_id, category_id, title, description)
              VALUES ($1, $2, $3, $4)
-             RETURNING *`,
+             RETURNING id`,
             [user_id, category_id, title, description],
         );
-        return rows[0];
+        return RequestModel.get(rows[0].id);
     },
 
     async get(request_id) {
-        const { rows } = await db.query(
-            "SELECT * FROM requests WHERE id = $1",
-            [request_id],
-        );
+        const { rows } = await db.query(`${SELECT_REQUEST} WHERE r.id = $1`, [
+            request_id,
+        ]);
         return rows[0];
     },
 
     async setStatus(request_id, status) {
-        if (!Object.values(Request.Status).includes(status)) {
+        if (!Object.values(RequestModel.Status).includes(status)) {
             throw badRequest("Invalid status", status);
         }
         const { rows } = await db.query(
-            "UPDATE requests SET status = $1 WHERE id = $2 RETURNING *",
+            "UPDATE requests SET status = $1 WHERE id = $2 RETURNING id",
             [status, request_id],
         );
-        return rows[0];
+        return rows[0] && RequestModel.get(rows[0].id);
     },
 
     async assignOperator(request_id, operator_id) {
         const { rows } = await db.query(
-            "UPDATE requests SET assigned_operator_id = $1 WHERE id = $2 RETURNING *",
+            "UPDATE requests SET assigned_operator_id = $1 WHERE id = $2 RETURNING id",
             [operator_id, request_id],
         );
-        return rows[0];
+        return rows[0] && RequestModel.get(rows[0].id);
     },
 
     async list({
@@ -76,7 +87,7 @@ const RequestModel = {
 
         if (
             status !== undefined &&
-            !Object.values(Request.Status).includes(status)
+            !Object.values(RequestModel.Status).includes(status)
         ) {
             throw badRequest("Invalid status", status);
         }
@@ -140,9 +151,7 @@ const RequestModel = {
         const offset = (page - 1) * limit;
 
         const result = await db.query(
-            `SELECT r.*, c.name AS category_name
-         FROM requests r
-         LEFT JOIN categories c ON c.id = r.category_id
+            `${SELECT_REQUEST}
          ${where}
          ORDER BY ${col} ${dir} NULLS LAST, r.id ${dir}
          LIMIT $${values.length + 1}

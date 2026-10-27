@@ -13,8 +13,12 @@ const StatusHistory = {
 
     async getBy(request_id) {
         const { rows } = await db.query(
-            `SELECT * FROM request_status_history WHERE request_id = $1
-            ORDER BY changed_at DESC`,
+            `SELECT h.id, h.request_id, h.old_status, h.new_status, h.changed_at,
+                    json_build_object('id', u.id, 'username', u.username) AS changed_by
+             FROM request_status_history h
+             JOIN users u ON u.id = h.changed_by
+             WHERE h.request_id = $1
+             ORDER BY h.changed_at DESC, h.id DESC`,
             [request_id],
         );
         return rows;

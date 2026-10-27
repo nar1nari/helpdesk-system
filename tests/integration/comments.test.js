@@ -116,7 +116,7 @@ describe("Comments API", () => {
             expect(res.body.comment).toMatchObject({
                 id: expect.any(Number),
                 request_id: created.id,
-                author_id: alice.user.id,
+                author: { id: alice.user.id, username: "alice" },
                 content: "Test comment",
                 created_at: expect.any(String),
             });
