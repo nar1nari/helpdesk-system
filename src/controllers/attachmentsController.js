@@ -1,6 +1,6 @@
 const fs = require("node:fs/promises");
 const Attachment = require("../models/attachments");
-const Request = require("../models/requests");
+const RequestModel = require("../models/requests");
 const { notFound, badRequest } = require("../errors");
 const { canView } = require("../policies/requestPolicy");
 
@@ -49,7 +49,7 @@ exports.listForRequest = async (req, res) => {
 
 exports.get = async (req, res) => {
     const attachment = await Attachment.get(req.params.id);
-    const request = await Request.get(attachment?.request_id);
+    const request = await RequestModel.get(attachment?.request_id);
 
     if (!attachment || !canView(req.user, request)) {
         throw notFound("Attachment not found");

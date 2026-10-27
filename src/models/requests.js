@@ -10,7 +10,7 @@ const SORT_FIELDS = Object.freeze({
     updated_at: "r.updated_at",
 });
 
-const Request = {
+const RequestModel = {
     Status,
 
     async create(user_id, category_id, title, description) {
@@ -162,4 +162,4 @@ const Request = {
     },
 };
 
-module.exports = Request;
+module.exports = RequestModel;

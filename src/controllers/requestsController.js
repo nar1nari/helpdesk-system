@@ -1,4 +1,4 @@
-const Request = require("../models/requests");
+const RequestModel = require("../models/requests");
 const Category = require("../models/category");
 const StatusHistory = require("../models/statusHistory");
 const { forbidden, badRequest } = require("../errors");
@@ -11,7 +11,7 @@ exports.create = async (req, res) => {
         throw badRequest("Unknown category_id");
 
     res.status(201).json({
-        request: await Request.create(
+        request: await RequestModel.create(
             req.user.id,
             req.body.category_id,
             req.body.title,
@@ -29,7 +29,10 @@ exports.setStatus = async (req, res) => {
 
     assertCanTransition(req.user, req.request, req.body.status);
 
-    const updated = await Request.setStatus(req.params.id, req.body.status);
+    const updated = await RequestModel.setStatus(
+        req.params.id,
+        req.body.status,
+    );
 
     await StatusHistory.create(
         req.params.id,
@@ -57,7 +60,7 @@ exports.list = async (req, res) => {
         limit,
     } = req.query;
 
-    const result = await Request.list({
+    const result = await RequestModel.list({
         status,
         category_id,
         assigned_operator_id,
@@ -85,7 +88,7 @@ exports.assignOperator = async (req, res) => {
     }
 
     res.json({
-        request: await Request.assignOperator(
+        request: await RequestModel.assignOperator(
             req.params.id,
             req.body.operator_id,
         ),

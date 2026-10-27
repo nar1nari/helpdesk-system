@@ -1,7 +1,7 @@
 const StatusHistory = require("../../src/models/statusHistory");
 const Category = require("../../src/models/category");
 const User = require("../../src/models/users");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 
 describe("StatusHistory model", () => {
     let request;
@@ -10,7 +10,7 @@ describe("StatusHistory model", () => {
     beforeEach(async () => {
         user = await User.create("alice", "secret123");
         const category = await Category.add("category1");
-        request = await Request.create(
+        request = await RequestModel.create(
             user.id,
             category.id,
             "Test request",

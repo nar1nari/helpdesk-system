@@ -2,7 +2,7 @@ const request = require("supertest");
 const createApp = require("../helpers/createApp");
 const db = require("../../src/db");
 const Category = require("../../src/models/category");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 const Comment = require("../../src/models/comments");
 const createAuthHelpers = require("../helpers/authHelpers");
 
@@ -19,7 +19,7 @@ describe("Comments API", () => {
     });
 
     const createRequestFor = (user) =>
-        Request.create(
+        RequestModel.create(
             user.id,
             category.id,
             "Test request",

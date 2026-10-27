@@ -7,7 +7,7 @@ const config = require("../../src/config");
 const db = require("../../src/db");
 const User = require("../../src/models/users");
 const Category = require("../../src/models/category");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 const Attachment = require("../../src/models/attachments");
 
 const uploadDir = config.uploadDir;
@@ -43,7 +43,7 @@ describe("Attachment model", () => {
         const user = await User.create("alice", "secret123");
         const category = await Category.add("category1");
 
-        request = await Request.create(
+        request = await RequestModel.create(
             user.id,
             category.id,
             "Test request",

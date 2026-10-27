@@ -1,4 +1,4 @@
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 const User = require("../../src/models/users");
 const Category = require("../../src/models/category");
 
@@ -16,7 +16,7 @@ describe("Request model", () => {
     });
 
     async function createRequest(overrides = {}) {
-        return Request.create(
+        return RequestModel.create(
             overrides.user_id ?? user.id,
             overrides.category_id ?? category.id,
             overrides.title ?? "Test request",
@@ -26,7 +26,7 @@ describe("Request model", () => {
 
     // list() requires a role; admin sees everything without extra filters
     const listAsAdmin = (options = {}) =>
-        Request.list({ user: admin, ...options });
+        RequestModel.list({ user: admin, ...options });
 
     test("create() creates a request with default status", async () => {
         const request = await createRequest();
@@ -36,7 +36,7 @@ describe("Request model", () => {
             category_id: category.id,
             title: "Test request",
             description: "Test description",
-            status: Request.Status.NEW,
+            status: RequestModel.Status.NEW,
             assigned_operator_id: null,
         });
         expect(request.id).toBeDefined();
@@ -47,42 +47,45 @@ describe("Request model", () => {
     test("get() finds request by id", async () => {
         const request = await createRequest();
 
-        expect(await Request.get(request.id)).toMatchObject(request);
+        expect(await RequestModel.get(request.id)).toMatchObject(request);
     });
 
     test("get() returns undefined for unknown request", async () => {
-        expect(await Request.get(-1)).toBeUndefined();
+        expect(await RequestModel.get(-1)).toBeUndefined();
     });
 
     test("setStatus() updates request status", async () => {
         const request = await createRequest();
 
-        const result = await Request.setStatus(
+        const result = await RequestModel.setStatus(
             request.id,
-            Request.Status.IN_PROGRESS,
+            RequestModel.Status.IN_PROGRESS,
         );
 
-        expect(result.status).toBe(Request.Status.IN_PROGRESS);
-        expect((await Request.get(request.id)).status).toBe(
-            Request.Status.IN_PROGRESS,
+        expect(result.status).toBe(RequestModel.Status.IN_PROGRESS);
+        expect((await RequestModel.get(request.id)).status).toBe(
+            RequestModel.Status.IN_PROGRESS,
         );
     });
 
     test("setStatus() rejects invalid status", async () => {
         const request = await createRequest();
 
-        await expect(Request.setStatus(request.id, "invalid")).rejects.toThrow(
-            "Invalid status",
-        );
+        await expect(
+            RequestModel.setStatus(request.id, "invalid"),
+        ).rejects.toThrow("Invalid status");
     });
 
     test("assignOperator() assigns an operator to a request", async () => {
         const request = await createRequest();
 
-        const result = await Request.assignOperator(request.id, operator.id);
+        const result = await RequestModel.assignOperator(
+            request.id,
+            operator.id,
+        );
 
         expect(result.assigned_operator_id).toBe(operator.id);
-        expect((await Request.get(request.id)).assigned_operator_id).toBe(
+        expect((await RequestModel.get(request.id)).assigned_operator_id).toBe(
             operator.id,
         );
     });
@@ -108,7 +111,7 @@ describe("Request model", () => {
         const own = await createRequest({ title: "Own request" });
         await createRequest({ user_id: other.id, title: "Foreign request" });
 
-        const result = await Request.list({
+        const result = await RequestModel.list({
             user: user,
         });
 
@@ -122,10 +125,10 @@ describe("Request model", () => {
         const mine = await createRequest({ title: "Mine" });
         const foreign = await createRequest({ title: "Foreign" });
 
-        await Request.assignOperator(mine.id, operator.id);
-        await Request.assignOperator(foreign.id, otherOperator.id);
+        await RequestModel.assignOperator(mine.id, operator.id);
+        await RequestModel.assignOperator(foreign.id, otherOperator.id);
 
-        const result = await Request.list({
+        const result = await RequestModel.list({
             user: operator,
         });
 
@@ -139,16 +142,19 @@ describe("Request model", () => {
         await createRequest();
         const request2 = await createRequest({ title: "Another request" });
 
-        await Request.setStatus(request2.id, Request.Status.IN_PROGRESS);
+        await RequestModel.setStatus(
+            request2.id,
+            RequestModel.Status.IN_PROGRESS,
+        );
 
         const result = await listAsAdmin({
-            status: Request.Status.IN_PROGRESS,
+            status: RequestModel.Status.IN_PROGRESS,
         });
 
         expect(result.requests).toMatchObject([
             {
                 id: request2.id,
-                status: Request.Status.IN_PROGRESS,
+                status: RequestModel.Status.IN_PROGRESS,
             },
         ]);
         expect(result.requests).toHaveLength(1);
@@ -179,7 +185,7 @@ describe("Request model", () => {
         await createRequest();
         const request2 = await createRequest({ title: "Assigned request" });
 
-        await Request.assignOperator(request2.id, operator.id);
+        await RequestModel.assignOperator(request2.id, operator.id);
 
         const result = await listAsAdmin({
             assigned_operator_id: operator.id,
@@ -308,7 +314,7 @@ describe("Request model", () => {
 
     test("list() throws for an unknown user role", async () => {
         await expect(
-            Request.list({ user: { id: 1, role: "guest" } }),
+            RequestModel.list({ user: { id: 1, role: "guest" } }),
         ).rejects.toThrow("Invalid user role");
     });
 

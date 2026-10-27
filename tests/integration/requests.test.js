@@ -2,7 +2,7 @@ const request = require("supertest");
 const createApp = require("../helpers/createApp");
 const db = require("../../src/db");
 const Category = require("../../src/models/category");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 const createAuthHelpers = require("../helpers/authHelpers");
 
 describe("Requests API", () => {
@@ -58,7 +58,7 @@ describe("Requests API", () => {
                 category_id: category.id,
                 title: "Printer is broken",
                 description: "It does not print",
-                status: Request.Status.NEW,
+                status: RequestModel.Status.NEW,
                 assigned_operator_id: null,
             });
             expect(res.body.request.id).toBeDefined();
@@ -122,7 +122,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, other.user.id);
+            await RequestModel.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .get(`/requests/${created.id}`)
@@ -191,8 +191,8 @@ describe("Requests API", () => {
             const foreign = await createRequest(alice.token, {
                 title: "Foreign",
             });
-            await Request.assignOperator(mine.id, operator.user.id);
-            await Request.assignOperator(foreign.id, other.user.id);
+            await RequestModel.assignOperator(mine.id, operator.user.id);
+            await RequestModel.assignOperator(foreign.id, other.user.id);
 
             const res = await request(app)
                 .get("/requests")
@@ -235,11 +235,14 @@ describe("Requests API", () => {
             const second = await createRequest(alice.token, {
                 title: "Second",
             });
-            await Request.setStatus(second.id, Request.Status.IN_PROGRESS);
+            await RequestModel.setStatus(
+                second.id,
+                RequestModel.Status.IN_PROGRESS,
+            );
 
             const res = await request(app)
                 .get("/requests")
-                .query({ status: Request.Status.IN_PROGRESS })
+                .query({ status: RequestModel.Status.IN_PROGRESS })
                 .set(auth(admin.token));
 
             expect(res.status).toBe(200);
@@ -314,7 +317,7 @@ describe("Requests API", () => {
         test("401 without token", async () => {
             const res = await request(app)
                 .patch("/requests/1/status")
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
             expect(res.status).toBe(401);
         });
 
@@ -324,7 +327,7 @@ describe("Requests API", () => {
             const res = await request(app)
                 .patch("/requests/42/status")
                 .set(auth(admin.token))
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
 
             expect(res.status).toBe(404);
         });
@@ -336,12 +339,12 @@ describe("Requests API", () => {
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
                 .set(auth(alice.token))
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
 
             expect(res.status).toBe(404);
             expect(res.body.error.message).toBe("Request not found");
-            expect((await Request.get(created.id)).status).toBe(
-                Request.Status.NEW,
+            expect((await RequestModel.get(created.id)).status).toBe(
+                RequestModel.Status.NEW,
             );
         });
 
@@ -350,16 +353,16 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, other.user.id);
+            await RequestModel.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
                 .set(auth(operator.token))
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
 
             expect(res.status).toBe(404);
-            expect((await Request.get(created.id)).status).toBe(
-                Request.Status.NEW,
+            expect((await RequestModel.get(created.id)).status).toBe(
+                RequestModel.Status.NEW,
             );
         });
 
@@ -371,7 +374,7 @@ describe("Requests API", () => {
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
                 .set(auth(operator.token))
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
 
             expect(res.status).toBe(404);
         });
@@ -380,17 +383,19 @@ describe("Requests API", () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, operator.user.id);
+            await RequestModel.assignOperator(created.id, operator.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
                 .set(auth(operator.token))
-                .send({ status: Request.Status.IN_PROGRESS });
+                .send({ status: RequestModel.Status.IN_PROGRESS });
 
             expect(res.status).toBe(200);
-            expect(res.body.request.status).toBe(Request.Status.IN_PROGRESS);
-            expect((await Request.get(created.id)).status).toBe(
-                Request.Status.IN_PROGRESS,
+            expect(res.body.request.status).toBe(
+                RequestModel.Status.IN_PROGRESS,
+            );
+            expect((await RequestModel.get(created.id)).status).toBe(
+                RequestModel.Status.IN_PROGRESS,
             );
         });
 
@@ -402,11 +407,11 @@ describe("Requests API", () => {
             const res = await request(app)
                 .patch(`/requests/${created.id}/status`)
                 .set(auth(admin.token))
-                .send({ status: Request.Status.REJECTED });
+                .send({ status: RequestModel.Status.REJECTED });
 
             expect(res.status).toBe(200);
-            expect((await Request.get(created.id)).status).toBe(
-                Request.Status.REJECTED,
+            expect((await RequestModel.get(created.id)).status).toBe(
+                RequestModel.Status.REJECTED,
             );
         });
 
@@ -468,9 +473,9 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(403);
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                null,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(null);
         });
 
         test("operator can take an unassigned request", async () => {
@@ -487,9 +492,9 @@ describe("Requests API", () => {
             expect(res.body.request.assigned_operator_id).toEqual(
                 operator.user.id,
             );
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                operator.user.id,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(operator.user.id);
         });
 
         test("403 when operator assigns another operator", async () => {
@@ -504,9 +509,9 @@ describe("Requests API", () => {
                 .send({ operator_id: other.user.id });
 
             expect(res.status).toBe(403);
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                null,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(null);
         });
 
         test("404 when operator takes an already assigned request", async () => {
@@ -514,7 +519,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, other.user.id);
+            await RequestModel.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/assign`)
@@ -522,9 +527,9 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(404);
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                other.user.id,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(other.user.id);
         });
 
         test("admin can assign an operator", async () => {
@@ -539,9 +544,9 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(200);
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                operator.user.id,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(operator.user.id);
         });
 
         test("admin can reassign an already assigned request", async () => {
@@ -550,7 +555,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const other = await signUp("operator2", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, other.user.id);
+            await RequestModel.assignOperator(created.id, other.user.id);
 
             const res = await request(app)
                 .patch(`/requests/${created.id}/assign`)
@@ -558,9 +563,9 @@ describe("Requests API", () => {
                 .send({ operator_id: operator.user.id });
 
             expect(res.status).toBe(200);
-            expect((await Request.get(created.id)).assigned_operator_id).toBe(
-                operator.user.id,
-            );
+            expect(
+                (await RequestModel.get(created.id)).assigned_operator_id,
+            ).toBe(operator.user.id);
         });
     });
 
@@ -628,7 +633,7 @@ describe("Requests API", () => {
             const operator = await signUp("operator", "operator");
             const first = await createRequest(alice.token);
             await createRequest(alice.token);
-            await Request.assignOperator(first.id, operator.user.id);
+            await RequestModel.assignOperator(first.id, operator.user.id);
 
             const res = await request(app)
                 .get(`/requests?assigned_operator_id=${operator.user.id}`)
@@ -764,7 +769,7 @@ describe("Requests API", () => {
             const alice = await signUp("alice");
             const operator = await signUp("operator", "operator");
             const created = await createRequest(alice.token);
-            await Request.assignOperator(created.id, operator.user.id);
+            await RequestModel.assignOperator(created.id, operator.user.id);
             await db.query("UPDATE requests SET status = 'resolved'");
 
             // only the applicant or an admin may close a resolved request

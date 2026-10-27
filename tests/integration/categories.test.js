@@ -2,7 +2,7 @@ const request = require("supertest");
 const createApp = require("../helpers/createApp");
 const createAuthHelpers = require("../helpers/authHelpers");
 const Category = require("../../src/models/category");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 
 describe("Categories API", () => {
     let app;
@@ -140,7 +140,12 @@ describe("Categories API", () => {
 
         test("409 when requests still use the category", async () => {
             const category = await Category.add("Hardware");
-            await Request.create(alice.user.id, category.id, "Title", "Text");
+            await RequestModel.create(
+                alice.user.id,
+                category.id,
+                "Title",
+                "Text",
+            );
             const res = await remove(admin.token, category.id);
             expect(res.status).toBe(409);
         });

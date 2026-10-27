@@ -8,7 +8,7 @@ const createApp = require("../helpers/createApp");
 const config = require("../../src/config");
 const db = require("../../src/db");
 const Category = require("../../src/models/category");
-const Request = require("../../src/models/requests");
+const RequestModel = require("../../src/models/requests");
 const Attachment = require("../../src/models/attachments");
 const createAuthHelpers = require("../helpers/authHelpers");
 
@@ -50,7 +50,7 @@ describe("Attachments API", () => {
     });
 
     const createRequestFor = (user) =>
-        Request.create(
+        RequestModel.create(
             user.id,
             category.id,
             "Test request",
