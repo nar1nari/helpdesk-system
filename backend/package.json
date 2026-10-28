@@ -1,5 +1,5 @@
 {
-  "name": "helpdesk-system",
+  "name": "helpdesk-backend",
   "version": "1.0.0",
   "description": "Service for submitting and processing client requests.",
   "license": "MIT",
