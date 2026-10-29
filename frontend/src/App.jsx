@@ -4,6 +4,7 @@ import AuthForm from "./components/AuthForm";
 import RequestList from "./components/RequestList";
 import RequestDetail from "./components/RequestDetail";
 import Admin from "./components/Admin";
+import Notifications from "./components/Notifications";
 
 export default function App() {
     const [user, setUser] = useState(null);
@@ -48,6 +49,7 @@ export default function App() {
                     )}
                 </div>
                 <div className="flex gap-2 items-center">
+                    <Notifications onOpen={(id) => setView({ page: "request", id })} />
                     <span>{user.username}</span>
                     <span className="badge badge-outline badge-primary">{user.role}</span>
                     <button className="btn btn-sm" onClick={logout}>Log out</button>

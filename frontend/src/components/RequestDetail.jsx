@@ -69,6 +69,10 @@ export default function RequestDetail({ id, user, onBack }) {
     const canAssignSelf =
         user.role !== "applicant" && !request.assigned_operator;
     const isClosed = ["closed", "rejected"].includes(request.status);
+    // Only the author and an administrator may delete (hide) things.
+    const isAdmin = user.role === "admin";
+    const canDeleteRequest = isAdmin || request.user.id === user.id;
+    const confirmDelete = (what) => window.confirm(`Delete this ${what}?`);
 
     return (
         <div className="flex flex-col gap-4">
@@ -100,6 +104,18 @@ export default function RequestDetail({ id, user, onBack }) {
                                 Assign to me
                             </button>
                         )}
+                        {canDeleteRequest && (
+                            <button
+                                className="btn btn-sm btn-error btn-outline ml-auto"
+                                onClick={async () => {
+                                    if (!confirmDelete("request")) return;
+                                    await run(api.deleteRequest)(id);
+                                    onBack();
+                                }}
+                            >
+                                Delete request
+                            </button>
+                        )}
                         {user.role === "admin" && (
                             <select
                                 className="select select-sm w-auto"
@@ -127,6 +143,16 @@ export default function RequestDetail({ id, user, onBack }) {
                                     {c.author.username} <time className="text-xs opacity-60">{fmtDate(c.created_at)}</time>
                                 </div>
                                 <div className="chat-bubble whitespace-pre-wrap">{c.content}</div>
+                                {(isAdmin || c.author.id === user.id) && (
+                                    <div className="chat-footer">
+                                        <button
+                                            className="btn btn-xs btn-ghost text-error"
+                                            onClick={() => confirmDelete("comment") && run(api.deleteComment)(id, c.id)}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                         {!isClosed && (
@@ -158,6 +184,14 @@ export default function RequestDetail({ id, user, onBack }) {
                                             <span className="text-xs opacity-60"> {Math.ceil(a.size_bytes / 1024)} KB</span>
                                         </span>
                                         <button className="btn btn-sm" onClick={() => run(api.download)(a)}>Download</button>
+                                        {(isAdmin || a.uploaded_by === user.id) && (
+                                            <button
+                                                className="btn btn-sm btn-error btn-outline"
+                                                onClick={() => confirmDelete("file") && run(api.deleteAttachment)(a.id)}
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

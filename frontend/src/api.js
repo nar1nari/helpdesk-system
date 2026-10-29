@@ -68,12 +68,17 @@ export const api = {
             body: { operator_id },
         }),
 
+    deleteRequest: (id) => request(`/requests/${id}`, { method: "DELETE" }),
+
     comments: (id) => request(`/requests/${id}/comments`),
     addComment: (id, content) =>
         request(`/requests/${id}/comments`, {
             method: "POST",
             body: { content },
         }),
+
+    deleteComment: (id, commentId) =>
+        request(`/requests/${id}/comments/${commentId}`, { method: "DELETE" }),
 
     attachments: (id) => request(`/requests/${id}/attachments`),
     upload: (id, file) => {
@@ -84,6 +89,8 @@ export const api = {
             body: form,
         });
     },
+    deleteAttachment: (id) =>
+        request(`/attachments/${id}`, { method: "DELETE" }),
     download: async (attachment) => {
         const res = await request(`/attachments/${attachment.id}`, {
             raw: true,
@@ -95,6 +102,12 @@ export const api = {
         a.click();
         URL.revokeObjectURL(url);
     },
+
+    notifications: (query) => request("/notifications", { query }),
+    markNotificationRead: (id) =>
+        request(`/notifications/${id}/read`, { method: "PATCH" }),
+    markAllNotificationsRead: () =>
+        request("/notifications/read-all", { method: "POST" }),
 
     users: () => request("/admin/users"),
     createUser: (body) => request("/admin/users", { method: "POST", body }),
