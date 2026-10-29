@@ -36,9 +36,21 @@ const RequestModel = {
     },
 
     async get(request_id) {
-        const { rows } = await db.query(`${SELECT_REQUEST} WHERE r.id = $1`, [
-            request_id,
-        ]);
+        const { rows } = await db.query(
+            `${SELECT_REQUEST} WHERE r.id = $1 AND r.deleted_at IS NULL`,
+            [request_id],
+        );
+        return rows[0];
+    },
+
+    async softDelete(request_id, deleted_by) {
+        const { rows } = await db.query(
+            `UPDATE requests
+             SET deleted_at = now(), deleted_by = $2
+             WHERE id = $1 AND deleted_at IS NULL
+             RETURNING id, deleted_at, deleted_by`,
+            [request_id, deleted_by],
+        );
         return rows[0];
     },
 
@@ -77,7 +89,7 @@ const RequestModel = {
         const col = SORT_FIELDS[sort_by] ?? SORT_FIELDS.created_at;
         const dir = sort_order === "asc" ? "ASC" : "DESC";
 
-        const conditions = [];
+        const conditions = ["r.deleted_at IS NULL"];
         const values = [];
 
         const addFilter = (condition, value) => {

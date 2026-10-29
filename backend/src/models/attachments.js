@@ -3,16 +3,23 @@ const db = require("../db");
 const config = require("../config");
 
 const Attachment = {
-    async create(requestId, file) {
+    async create(requestId, file, uploadedBy = null) {
         const originalName = path.basename(file.originalname).slice(-255);
 
         const { rows } = await db.query(
             `INSERT INTO request_attachments
                 (request_id, file_path, original_name,
-                 mime_type, size_bytes)
-             VALUES ($1, $2, $3, $4, $5)
+                 mime_type, size_bytes, uploaded_by)
+             VALUES ($1, $2, $3, $4, $5, $6)
              RETURNING *`,
-            [requestId, file.filename, originalName, file.mimetype, file.size],
+            [
+                requestId,
+                file.filename,
+                originalName,
+                file.mimetype,
+                file.size,
+                uploadedBy,
+            ],
         );
 
         return rows[0];
@@ -21,7 +28,7 @@ const Attachment = {
     async get(id) {
         const { rows } = await db.query(
             `SELECT * FROM request_attachments
-             WHERE id = $1`,
+             WHERE id = $1 AND deleted_at IS NULL`,
             [id],
         );
 
@@ -39,9 +46,9 @@ const Attachment = {
     async listForRequest(requestId) {
         const { rows } = await db.query(
             `SELECT id, request_id, original_name,
-                    mime_type, size_bytes, uploaded_at
+                    mime_type, size_bytes, uploaded_at, uploaded_by
              FROM request_attachments
-             WHERE request_id = $1
+             WHERE request_id = $1 AND deleted_at IS NULL
              ORDER BY uploaded_at ASC, id ASC`,
             [requestId],
         );
@@ -49,11 +56,22 @@ const Attachment = {
         return rows;
     },
 
+    async delete(id, deletedBy = null) {
+        const { rows } = await db.query(
+            `UPDATE request_attachments
+             SET deleted_at = now(), deleted_by = $2
+             WHERE id = $1 AND deleted_at IS NULL
+             RETURNING *`,
+            [id, deletedBy],
+        );
+        return rows[0];
+    },
+
     async countForRequest(requestId) {
         const { rows } = await db.query(
             `SELECT COUNT(*)::int AS count
              FROM request_attachments
-             WHERE request_id = $1`,
+             WHERE request_id = $1 AND deleted_at IS NULL`,
             [requestId],
         );
 

@@ -100,3 +100,82 @@ describe("canChangeStatus", () => {
         expect(policy.canChangeStatus(otherApplicant, request)).toBe(false);
     });
 });
+
+describe("canDeleteRequest", () => {
+    test("admin can delete any request", () => {
+        expect(policy.canDeleteRequest(admin, makeRequest())).toBe(true);
+    });
+
+    test("the author can delete their own request", () => {
+        expect(policy.canDeleteRequest(applicant, makeRequest())).toBe(true);
+    });
+
+    test("another applicant cannot", () => {
+        expect(policy.canDeleteRequest(otherApplicant, makeRequest())).toBe(
+            false,
+        );
+    });
+
+    test("an assigned operator who is not the author cannot", () => {
+        const request = makeRequest({ assigned_operator_id: 10 });
+        expect(policy.canDeleteRequest(operator, request)).toBe(false);
+    });
+
+    test("an operator can delete a request they authored", () => {
+        expect(
+            policy.canDeleteRequest(operator, makeRequest({ user_id: 10 })),
+        ).toBe(true);
+    });
+});
+
+describe("canDeleteComment", () => {
+    const comment = { author_id: 1 };
+
+    test("admin can delete any comment", () => {
+        expect(policy.canDeleteComment(admin, comment)).toBe(true);
+    });
+
+    test("the author can delete their own comment", () => {
+        expect(policy.canDeleteComment(applicant, comment)).toBe(true);
+    });
+
+    test("nobody else can, whatever their role", () => {
+        expect(policy.canDeleteComment(otherApplicant, comment)).toBe(false);
+        expect(policy.canDeleteComment(operator, comment)).toBe(false);
+    });
+});
+
+describe("canDeleteAttachment", () => {
+    test("admin can delete any attachment, even without a known uploader", () => {
+        expect(policy.canDeleteAttachment(admin, { uploaded_by: 1 })).toBe(
+            true,
+        );
+        expect(policy.canDeleteAttachment(admin, { uploaded_by: null })).toBe(
+            true,
+        );
+    });
+
+    test("the uploader can delete their own attachment", () => {
+        expect(policy.canDeleteAttachment(applicant, { uploaded_by: 1 })).toBe(
+            true,
+        );
+    });
+
+    test("nobody else can", () => {
+        expect(
+            policy.canDeleteAttachment(otherApplicant, { uploaded_by: 1 }),
+        ).toBe(false);
+        expect(policy.canDeleteAttachment(operator, { uploaded_by: 1 })).toBe(
+            false,
+        );
+    });
+
+    test("an attachment with an unknown uploader is not deletable by non-admins", () => {
+        expect(
+            policy.canDeleteAttachment(applicant, { uploaded_by: null }),
+        ).toBe(false);
+        expect(
+            policy.canDeleteAttachment(applicant, { uploaded_by: undefined }),
+        ).toBe(false);
+    });
+});

@@ -20,21 +20,33 @@ const Comment = {
         return created.rows[0];
     },
 
+    async get(id) {
+        const { rows } = await db.query(
+            `SELECT id, request_id, author_id, content, created_at
+             FROM request_comments
+             WHERE id = $1 AND deleted_at IS NULL`,
+            [id],
+        );
+        return rows[0];
+    },
+
     async findBy(request_id) {
         const { rows } = await db.query(
             `${SELECT_COMMENT}
-             WHERE cm.request_id = $1
+             WHERE cm.request_id = $1 AND cm.deleted_at IS NULL
              ORDER BY cm.created_at ASC, cm.id ASC`,
             [request_id],
         );
         return rows;
     },
 
-    async delete(id) {
+    async delete(id, deleted_by = null) {
         const { rows } = await db.query(
-            `DELETE FROM request_comments WHERE id = $1
-            RETURNING *`,
-            [id],
+            `UPDATE request_comments
+             SET deleted_at = now(), deleted_by = $2
+             WHERE id = $1 AND deleted_at IS NULL
+             RETURNING *`,
+            [id, deleted_by],
         );
         return rows[0];
     },

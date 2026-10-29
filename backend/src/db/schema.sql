@@ -27,7 +27,9 @@ CREATE TABLE IF NOT EXISTS requests (
     'new','in_progress','pending','resolved','closed','rejected')),
     assigned_operator_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at              TIMESTAMPTZ,
+    deleted_by              INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS request_attachments (
@@ -37,25 +39,46 @@ CREATE TABLE IF NOT EXISTS request_attachments (
     original_name           VARCHAR(255) NOT NULL,
     mime_type               VARCHAR(100) NOT NULL,
     size_bytes              INTEGER NOT NULL,
-    uploaded_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+    uploaded_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    uploaded_by             INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    deleted_at              TIMESTAMPTZ,
+    deleted_by              INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS request_comments (
-    id                       SERIAL PRIMARY KEY,
-    request_id               INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-    author_id                INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    content                  TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 5000),
-    created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                      SERIAL PRIMARY KEY,
+    request_id              INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    author_id               INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    content                 TEXT NOT NULL CHECK (char_length(content) BETWEEN 1 AND 5000),
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+    deleted_at              TIMESTAMPTZ,
+    deleted_by              INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS request_status_history (
-    id                       SERIAL PRIMARY KEY,
-    request_id               INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
-    changed_by               INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    old_status               VARCHAR(20) NOT NULL,
-    new_status               VARCHAR(20) NOT NULL,
-    changed_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                      SERIAL PRIMARY KEY,
+    request_id              INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    changed_by              INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    old_status              VARCHAR(20) NOT NULL,
+    new_status              VARCHAR(20) NOT NULL,
+    changed_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id                       SERIAL PRIMARY KEY,
+    user_id                  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    request_id               INTEGER NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+    actor_id                 INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    type                     VARCHAR(30) NOT NULL
+                             CHECK (type IN (
+    'status_changed','comment_added','comment_deleted','file_added','file_deleted')),
+    meta                     JSONB NOT NULL DEFAULT '{}',
+    is_read                  BOOLEAN NOT NULL DEFAULT false,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS notifications_user_idx
+    ON notifications (user_id, is_read, created_at DESC);
 
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
 BEGIN

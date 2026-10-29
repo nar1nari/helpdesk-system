@@ -28,3 +28,15 @@ exports.canChangeStatus = (user, request) =>
     (user.role === Role.APPLICANT &&
         request.user_id === user.id &&
         request.status === "resolved");
+
+const isAdmin = (user) => user.role === Role.ADMIN;
+
+exports.canDeleteRequest = (user, request) =>
+    isAdmin(user) || request.user_id === user.id;
+
+exports.canDeleteComment = (user, comment) =>
+    isAdmin(user) || comment.author_id === user.id;
+
+exports.canDeleteAttachment = (user, attachment) =>
+    isAdmin(user) ||
+    (attachment.uploaded_by != null && attachment.uploaded_by === user.id);

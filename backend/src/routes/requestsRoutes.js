@@ -6,6 +6,7 @@ const {
     list,
     assignOperator,
     getStatusHistory,
+    remove,
 } = require("../controllers/requestsController");
 const {
     create: createAttachment,
@@ -15,11 +16,12 @@ const upload = require("../middlewares/upload");
 const {
     create: createComment,
     get: getComments,
+    remove: removeComment,
 } = require("../controllers/commentsController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const loadRequest = require("../middlewares/loadRequest");
 const validate = require("../middlewares/validate");
-const { idParams } = require("../validators/common");
+const { idParams, commentParams } = require("../validators/common");
 const {
     create: createSchema,
     list: listSchema,
@@ -35,6 +37,7 @@ router.use(authMiddleware);
 router.get("/", validate({ query: listSchema }), list);
 router.post("/", validate({ body: createSchema }), create);
 router.get("/:id", validate({ params: idParams }), loadRequest(), get);
+router.delete("/:id", validate({ params: idParams }), loadRequest(), remove);
 router.patch(
     "/:id/status",
     validate({ params: idParams, body: statusSchema }),
@@ -79,6 +82,12 @@ router.get(
     validate({ params: idParams }),
     loadRequest(),
     getComments,
+);
+router.delete(
+    "/:id/comments/:commentId",
+    validate({ params: commentParams }),
+    loadRequest(),
+    removeComment,
 );
 
 module.exports = router;

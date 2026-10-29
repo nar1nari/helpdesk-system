@@ -1,10 +1,11 @@
 const RequestModel = require("../models/requests");
 const Category = require("../models/category");
 const StatusHistory = require("../models/statusHistory");
-const { forbidden, badRequest } = require("../errors");
+const { forbidden, badRequest, notFound } = require("../errors");
 const serialize = require("../serializers");
 const User = require("../models/users");
-const { canAssign } = require("../policies/requestPolicy");
+const { canAssign, canDeleteRequest } = require("../policies/requestPolicy");
+const notifications = require("../services/notificationService");
 const { assertCanTransition } = require("../policies/transitions");
 
 exports.create = async (req, res) => {
@@ -44,9 +45,24 @@ exports.setStatus = async (req, res) => {
         req.body.status,
     );
 
+    await notifications.statusChanged(
+        updated,
+        req.user,
+        old_status,
+        req.body.status,
+    );
+
     res.json({
         request: serialize.request(updated),
     });
+};
+
+exports.remove = async (req, res) => {
+    if (!canDeleteRequest(req.user, req.request)) throw forbidden();
+    if (!(await RequestModel.softDelete(req.request.id, req.user.id))) {
+        throw notFound("Request not found");
+    }
+    res.status(204).end();
 };
 
 exports.list = async (req, res) => {
