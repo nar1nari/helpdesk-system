@@ -13,6 +13,8 @@ const schema = z.object({
         .int()
         .positive()
         .default(5 * 1024 * 1024),
+    FRONTEND_DIST: z.string().min(1).optional(),
+    TRUST_PROXY: z.coerce.number().int().min(0).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -31,5 +33,7 @@ module.exports = {
     jwtExpires: env.JWT_EXPIRES,
     uploadDir: env.UPLOAD_DIR,
     uploadMaxBytes: env.UPLOAD_MAX_BYTES,
+    frontendDist: env.FRONTEND_DIST,
+    trustProxy: env.TRUST_PROXY,
     bcryptRounds: env.NODE_ENV === "test" ? 4 : 12,
 };

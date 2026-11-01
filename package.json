@@ -1,0 +1,18 @@
+{
+  "name": "helpdesk",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Service for submitting and processing client requests.",
+  "license": "MIT",
+  "author": "Viktor Lopushnyanu",
+  "scripts": {
+    "install:all": "npm --prefix backend ci && npm --prefix frontend ci",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "migrate": "npm --prefix backend run migrate",
+    "start": "FRONTEND_DIST=../frontend/dist npm --prefix backend start",
+    "test": "npm --prefix backend test",
+    "lint": "npm --prefix backend run lint && npm --prefix frontend run lint"
+  }
+}
